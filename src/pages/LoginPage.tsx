@@ -25,6 +25,7 @@ export const LoginPage: React.FC = () => {
   };
   return (
     <main className="login-page">
+      <div className="login-card">
       <section className="login-story" aria-label="Tentang SMART PKL">
         <Link to="/" className="login-brand"><span className="login-brand-icon"><GraduationCap size={28} /></span><span>SMART PKL<small>PT Seven Inc.</small></span></Link>
         <div className="login-story-content">
@@ -67,6 +68,7 @@ export const LoginPage: React.FC = () => {
         </div>
         <footer className="login-form-footer">© {new Date().getFullYear()} PT Seven Inc. <span>SMART PKL</span></footer>
       </section>
+      </div>
     </main>
   );
 };

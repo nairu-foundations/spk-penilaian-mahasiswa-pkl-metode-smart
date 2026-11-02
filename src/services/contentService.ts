@@ -1,5 +1,6 @@
 import { FAQItem, FiturItem, HeroSection, LangkahPenggunaan, MenuNavigasi, PengumumanItem, SiteSettings, TestimoniItem } from '../types';
 import { database, checkError } from '../lib/database';
+import { notifyMutation } from '../lib/mutationFeedback';
 
 async function getDocument<T>(key: string): Promise<T> {
   const { data, error } = await database().from('site_settings').select('value').eq('key', `cms_${key}`).single();
@@ -11,6 +12,7 @@ async function saveDocument<T>(key: string, value: T): Promise<T> {
   const { data, error } = await database().from('site_settings').upsert({key: `cms_${key}`, value: JSON.stringify(value), tipe: 'json'}).select('key');
   checkError(error);
   if (data?.length !== 1) throw new Error('Konten belum tersimpan.');
+  notifyMutation();
   return value;
 }
 export const contentService = {
@@ -24,6 +26,7 @@ export const contentService = {
     const { data, error } = await database().from('site_settings').upsert(rows).select('key');
     checkError(error);
     if (data?.length !== rows.length) throw new Error('Pengaturan belum tersimpan seluruhnya.');
+    notifyMutation();
     return settings;
   },
   async getHero(): Promise<HeroSection> { return getDocument('hero'); },

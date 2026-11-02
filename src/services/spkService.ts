@@ -1,6 +1,7 @@
 import { Alternatif, HasilPerhitungan, HasilDetail, Kriteria, NilaiAlternatif, PeriodePKL, SkalaNilai } from '../types';
 import { database, checkError, readRows, saveRow, deleteRow } from '../lib/database';
 import { INITIAL_KRITERIA } from './initialData';
+import { notifyMutation } from '../lib/mutationFeedback';
 
 export const spkService = {
   async getKriteria(): Promise<Kriteria[]> { return readRows('kriteria_smart', 'urutan'); },
@@ -9,6 +10,7 @@ export const spkService = {
     const { data, error } = await database().from('kriteria_smart').upsert(rows, { onConflict: 'kode' }).select();
     checkError(error);
     if (data?.length !== rows.length) throw new Error('Kriteria belum tersimpan seluruhnya.');
+    notifyMutation();
     return this.getKriteria();
   },
   async saveKriteria(row: Kriteria): Promise<Kriteria> { return saveRow('kriteria_smart', row); },
@@ -24,6 +26,7 @@ export const spkService = {
     }, { onConflict: 'alternatif_id,kriteria_id' }).select();
     checkError(error);
     if (!data?.length) throw new Error('Nilai belum tersimpan.');
+    notifyMutation();
   },
   async getPeriode(): Promise<PeriodePKL[]> { return readRows('periode_pkl', 'tanggal_mulai'); },
   async savePeriode(row: PeriodePKL): Promise<PeriodePKL> { return saveRow('periode_pkl', row); },
@@ -35,6 +38,7 @@ export const spkService = {
     }).select().single();
     checkError(error);
     if (!data) throw new Error('Hasil perhitungan belum tersimpan.');
+    notifyMutation();
     return data;
   },
   async getRiwayatHasil(userId: string): Promise<HasilPerhitungan[]> {

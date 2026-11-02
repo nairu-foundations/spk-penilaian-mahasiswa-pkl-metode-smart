@@ -1,0 +1,14 @@
+.admin-page-enter{animation:admin-page-enter .24s ease-out both}
+.admin-shell button,.admin-shell a{transition:background-color .16s,color .16s,box-shadow .16s,transform .16s}
+.admin-shell button:not(:disabled):active{transform:translateY(1px)}
+.admin-shell tbody tr{transition:background-color .18s}
+.admin-shell input,.admin-shell select,.admin-shell textarea{transition:border-color .18s,box-shadow .18s}
+.admin-feedback{position:fixed;bottom:24px;right:24px;z-index:70;display:grid;gap:8px;pointer-events:none;max-width:calc(100vw - 32px)}
+.admin-feedback-card{display:flex;align-items:center;gap:12px;padding:15px 17px;border:1px solid #a7e1ca;border-radius:14px;background:#f0fdf4;color:#166534;box-shadow:0 10px 35px #14532d18;font-size:13px;pointer-events:auto}
+.admin-feedback-card>svg{flex-shrink:0}
+.admin-feedback-card button{padding:5px;border-radius:6px;cursor:pointer;margin-left:8px}
+.admin-feedback-card button:hover{background:#dcfce7}
+.admin-feedback-card button:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+@keyframes admin-page-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:640px){.admin-feedback{bottom:16px;right:16px;left:16px}.admin-feedback-card{font-size:12px}.admin-feedback-card button{margin-left:auto}}
+@media(prefers-reduced-motion:reduce){.admin-page-enter{animation:none}.admin-shell button,.admin-shell a,.admin-shell tbody tr,.admin-shell input,.admin-shell select,.admin-shell textarea{transition:none}.admin-shell button:not(:disabled):active{transform:none}}

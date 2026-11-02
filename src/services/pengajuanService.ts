@@ -1,5 +1,6 @@
 import { PengajuanPKL, StatusPengajuan } from '../types';
 import { database, checkError } from '../lib/database';
+import { notifyMutation } from '../lib/mutationFeedback';
 export const pengajuanService = {
   async getSemuaPengajuan(): Promise<PengajuanPKL[]> {
     const { data, error } = await database().from('pengajuan_pkl').select('*, alternatif(*), mahasiswa:app_profiles(*)').order('created_at', { ascending: false });
@@ -17,6 +18,8 @@ export const pengajuanService = {
   },
   async updateStatusPengajuan(id: string, status: StatusPengajuan, catatan_admin: string): Promise<PengajuanPKL> {
     const { data, error } = await database().from('pengajuan_pkl').update({status,catatan_admin}).eq('id',id).select().single();
-    checkError(error); if (!data) throw new Error('Status pengajuan belum tersimpan.'); return data;
+    checkError(error); if (!data) throw new Error('Status pengajuan belum tersimpan.');
+    notifyMutation('Status pengajuan berhasil diperbarui di Supabase.');
+    return data;
   },
 };

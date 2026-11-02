@@ -1,5 +1,6 @@
 import { MahasiswaPKL } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { notifyMutation } from '../lib/mutationFeedback';
 
 const requireDatabase = () => {
   if (!isSupabaseConfigured || !supabase) {
@@ -66,6 +67,7 @@ export const mahasiswaService = {
     if (!data || data.length !== rows.length) {
       throw new Error('Supabase belum mengonfirmasi seluruh data tersimpan. Periksa izin baca/tulis tabel mahasiswa_pkl.');
     }
+    notifyMutation();
     return data;
   },
 
@@ -73,5 +75,6 @@ export const mahasiswaService = {
     const { data, error } = await requireDatabase().from('mahasiswa_pkl').delete().eq('id', id).select('id');
     if (error) throw databaseError(error.message);
     if (!data?.length) throw new Error('Mahasiswa tidak terhapus. Periksa izin database atau muat ulang data.');
+    notifyMutation('Data mahasiswa berhasil dihapus dari Supabase.');
   },
 };

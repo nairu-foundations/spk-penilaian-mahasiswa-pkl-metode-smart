@@ -3,6 +3,7 @@ import { spkService } from './spkService';
 import { jalankanSMARTMahasiswa } from '../utils/smart';
 import { Role, UserProfile, MahasiswaPKL, AuditLog } from '../types';
 import { database, checkError, readRows } from '../lib/database';
+import { notifyMutation } from '../lib/mutationFeedback';
 
 export const GUEST_PROFILE: UserProfile = {
   id: 'guest', nama: 'Tamu', email: '', jabatan: 'Pengunjung', role: 'mahasiswa',
@@ -46,6 +47,7 @@ export const authService = {
     }).eq('id', currentUser.id).select().single();
     checkError(error);
     if (!data) throw new Error('Profil belum tersimpan.');
+    notifyMutation('Profil berhasil diperbarui di Supabase.');
     return (currentUser = data);
   },
 
@@ -104,5 +106,6 @@ export const authService = {
   async certifyRanking(periode: string): Promise<void> {
     const { error } = await database().rpc('certify_smart_ranking', { p_periode: periode });
     checkError(error);
+    notifyMutation('Peringkat berhasil disahkan.');
   },
 };
