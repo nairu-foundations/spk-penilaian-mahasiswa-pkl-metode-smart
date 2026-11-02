@@ -1,0 +1,16 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  supabaseUrl !== 'https://your-project.supabase.co' &&
+  !supabaseUrl.includes('placeholder')
+);
+
+// Inisialisasi client Supabase resmi jika kredensial env tersedia
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;

@@ -1,0 +1,142 @@
+[
+  {
+    "id": "mhs-001",
+    "kode_alternatif": "A1",
+    "nama": "Andi Pratama",
+    "nim": "20241001",
+    "institusi": "Universitas Gadjah Mada",
+    "bagian": "IT / Software Engineering",
+    "periode": "Periode 1 - 2025",
+    "tanggal_mulai": "2025-01-01",
+    "tanggal_selesai": "2025-06-30",
+    "no_hp": "0812-3456-7801",
+    "email": "andi.pratama@mail.ugm.ac.id",
+    "status": "Aktif",
+    "nilai_kriteria": {
+      "C1": 95,
+      "C2": 90,
+      "C3": 92
+    },
+    "utility": {
+      "C1": 0.95,
+      "C2": 0.90,
+      "C3": 0.92
+    },
+    "skor_akhir_smart": 0.9250,
+    "nilai_skala_100": 92.50,
+    "peringkat": 1,
+    "keterangan_nilai": "Sangat Baik"
+  },
+  {
+    "id": "mhs-002",
+    "kode_alternatif": "A2",
+    "nama": "Rina Anggraini",
+    "nim": "20241004",
+    "institusi": "Universitas Negeri Yogyakarta",
+    "bagian": "HRD & Talent Development",
+    "periode": "Periode 1 - 2025",
+    "tanggal_mulai": "2025-01-01",
+    "tanggal_selesai": "2025-06-30",
+    "no_hp": "0812-3456-7802",
+    "email": "rina.anggraini@student.uny.ac.id",
+    "status": "Aktif",
+    "nilai_kriteria": {
+      "C1": 95,
+      "C2": 90,
+      "C3": 85
+    },
+    "utility": {
+      "C1": 0.95,
+      "C2": 0.90,
+      "C3": 0.85
+    },
+    "skor_akhir_smart": 0.8900,
+    "nilai_skala_100": 89.00,
+    "peringkat": 2,
+    "keterangan_nilai": "Baik"
+  },
+  {
+    "id": "mhs-003",
+    "kode_alternatif": "A3",
+    "nama": "Siti Nurhaliza",
+    "nim": "20241002",
+    "institusi": "Universitas Pembangunan Nasional",
+    "bagian": "Marketing & PR",
+    "periode": "Periode 1 - 2025",
+    "tanggal_mulai": "2025-01-01",
+    "tanggal_selesai": "2025-06-30",
+    "no_hp": "0812-3456-7803",
+    "email": "siti.nurhaliza@upnyk.ac.id",
+    "status": "Aktif",
+    "nilai_kriteria": {
+      "C1": 90,
+      "C2": 95,
+      "C3": 85
+    },
+    "utility": {
+      "C1": 0.90,
+      "C2": 0.95,
+      "C3": 0.85
+    },
+    "skor_akhir_smart": 0.8850,
+    "nilai_skala_100": 88.50,
+    "peringkat": 3,
+    "keterangan_nilai": "Baik"
+  },
+  {
+    "id": "mhs-004",
+    "kode_alternatif": "A4",
+    "nama": "Budi Santoso",
+    "nim": "20241003",
+    "institusi": "Universitas Islam Indonesia",
+    "bagian": "Accounting & Finance",
+    "periode": "Periode 1 - 2025",
+    "tanggal_mulai": "2025-01-01",
+    "tanggal_selesai": "2025-06-30",
+    "no_hp": "0812-3456-7804",
+    "email": "budi.santoso@students.uii.ac.id",
+    "status": "Aktif",
+    "nilai_kriteria": {
+      "C1": 80,
+      "C2": 85,
+      "C3": 75
+    },
+    "utility": {
+      "C1": 0.80,
+      "C2": 0.85,
+      "C3": 0.75
+    },
+    "skor_akhir_smart": 0.7850,
+    "nilai_skala_100": 78.50,
+    "peringkat": 4,
+    "keterangan_nilai": "Cukup"
+  },
+  {
+    "id": "mhs-005",
+    "kode_alternatif": "A5",
+    "nama": "Dika Pratama",
+    "nim": "20241005",
+    "institusi": "Institut Teknologi Yogyakarta",
+    "bagian": "IT / Infrastructure",
+    "periode": "Periode 1 - 2025",
+    "tanggal_mulai": "2025-01-01",
+    "tanggal_selesai": "2025-06-30",
+    "no_hp": "0812-3456-7805",
+    "email": "dika.pratama@ity.ac.id",
+    "status": "Aktif",
+    "nilai_kriteria": {
+      "C1": 75,
+      "C2": 80,
+      "C3": 70
+    },
+    "utility": {
+      "C1": 0.75,
+      "C2": 0.80,
+      "C3": 0.70
+    },
+    "skor_akhir_smart": 0.7350,
+    "nilai_skala_100": 73.50,
+    "peringkat": 5,
+    "keterangan_nilai": "Cukup"
+  }
+]

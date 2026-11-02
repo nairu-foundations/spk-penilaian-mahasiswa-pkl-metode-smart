@@ -1,0 +1,6 @@
+{
+  "name": "SPK Penilaian Mahasiswa PKL Metode SMART",
+  "description": "Sistem Penunjang Keputusan Penilaian Mahasiswa PKL PT Seven Inc. dengan 3 Kriteria Benefit (Kehadiran C1, Ketepatan Waktu C2, Penyelesaian Tugas C3) dan Perangkingan Metode SMART.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
