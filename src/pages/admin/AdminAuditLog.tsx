@@ -10,32 +10,27 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
-import { AuditLog } from '../../types';
+import { useQuery } from '../../hooks/useData';
 
 export const AdminAuditLog: React.FC = () => {
   const { isSuperAdmin } = useAuth();
-  const [logs, setLogs] = useState<AuditLog[]>(() => authService.getAuditLogs());
+  const { data: logs = [], error, refetch } = useQuery(() => authService.getAuditLogs());
   const [certifiedNotice, setCertifiedNotice] = useState(false);
 
   const handleFounderCertification = async () => {
     try {
-      await fetch('/api/founder/sahkan-sk', { method: 'POST' });
-    } catch {
-      // safe fallback
+      await authService.certifyRanking('Periode 1 - 2025');
+      await refetch();
+      setCertifiedNotice(true);
+      setTimeout(() => setCertifiedNotice(false), 3500);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal mengesahkan hasil.');
     }
-    authService.recordAuditLog(
-      'Bpk. H. Rekso (Founder & CEO)',
-      'super_admin',
-      'Pengesahan Resmi Laporan PKL Periode 1 - 2025',
-      'Founder PT Seven Inc. telah menandatangani & mengesahkan seluruh nilai SMART dan menerbitkan SK Juara 1.'
-    );
-    setLogs(authService.getAuditLogs());
-    setCertifiedNotice(true);
-    setTimeout(() => setCertifiedNotice(false), 3500);
   };
 
   return (
     <div className="space-y-6">
+      {error && <p role="alert" className="text-red-700">{error}</p>}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -119,11 +114,11 @@ export const AdminAuditLog: React.FC = () => {
             <History className="w-4 h-4 text-slate-500" />
             <span>Riwayat Aktivitas &amp; Integritas Penilaian (Audit Trail)</span>
           </h3>
-          <span className="text-xs text-slate-500">{logs.length} catatan aktivitas tercatat</span>
+          <span className="text-xs text-slate-500">{(logs ?? []).length} catatan aktivitas tercatat</span>
         </div>
 
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {logs.map((log) => (
+          {(logs ?? []).map((log) => (
             <div key={log.id} className="p-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
                 <div className="flex items-center gap-2">

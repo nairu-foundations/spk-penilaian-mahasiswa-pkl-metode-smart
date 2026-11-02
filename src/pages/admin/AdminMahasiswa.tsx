@@ -20,11 +20,28 @@ import { Skeleton } from '../../components/common/Skeleton';
 
 export const AdminMahasiswa: React.FC = () => {
   const { isSuperAdmin } = useAuth();
-  const { data: list, loading, refetch } = useQuery(() => authService.getMahasiswaPKLList());
+  const { error: mahasiswaError, data: list, loading, refetch } = useQuery(() => authService.getMahasiswaPKLList());
   const [search, setSearch] = useState('');
   const [filterBagian, setFilterBagian] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MahasiswaPKL | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationNotice, setMigrationNotice] = useState('');
+
+  const handleMigrateLocal = async () => {
+    if (!window.confirm('Salin data mahasiswa dan nilai dari browser ini ke Supabase? Data dengan email yang sama akan diperbarui.')) return;
+    setMigrating(true);
+    setMigrationNotice('');
+    try {
+      const count = await authService.migrateLocalMahasiswa();
+      setMigrationNotice(`${count} data mahasiswa berhasil disalin ke Supabase.`);
+      await refetch();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal memindahkan data.');
+    } finally {
+      setMigrating(false);
+    }
+  };
 
   // Form State
   const [formNama, setFormNama] = useState('');
@@ -63,34 +80,42 @@ export const AdminMahasiswa: React.FC = () => {
   };
 
   const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formNama.trim() || !formEmail.trim()) return;
+    try {
+      e.preventDefault();
+      if (!formNama.trim() || !formEmail.trim()) return;
 
-    await authService.saveMahasiswaPKL({
-      id: editingItem?.id || `mhs-${Date.now()}`,
-      nama: formNama.trim(),
-      email: formEmail.trim(),
-      nim: formNim.trim() || editingItem?.nim || `2024${Math.floor(1000 + Math.random() * 9000)}`,
-      institusi: formInstitusi.trim() || 'Universitas Mitra',
-      bagian: formBagian,
-      periode: formPeriode,
-      tanggal_mulai: editingItem?.tanggal_mulai || '2025-01-01',
-      tanggal_selesai: editingItem?.tanggal_selesai || '2025-06-30',
-      no_hp: formNoHp.trim() || '0812-3456-7890',
-      status: formStatus,
-      skor_akhir_smart: editingItem?.skor_akhir_smart,
-      peringkat: editingItem?.peringkat,
-      keterangan_nilai: editingItem?.keterangan_nilai,
-    });
+      await authService.saveMahasiswaPKL({
+        id: editingItem?.id || `mhs-${Date.now()}`,
+        nama: formNama.trim(),
+        email: formEmail.trim(),
+        nim: formNim.trim() || editingItem?.nim || `2024${Math.floor(1000 + Math.random() * 9000)}`,
+        institusi: formInstitusi.trim() || 'Universitas Mitra',
+        bagian: formBagian,
+        periode: formPeriode,
+        tanggal_mulai: editingItem?.tanggal_mulai || '2025-01-01',
+        tanggal_selesai: editingItem?.tanggal_selesai || '2025-06-30',
+        no_hp: formNoHp.trim() || '0812-3456-7890',
+        status: formStatus,
+        skor_akhir_smart: editingItem?.skor_akhir_smart,
+        peringkat: editingItem?.peringkat,
+        keterangan_nilai: editingItem?.keterangan_nilai,
+      });
 
-    setIsModalOpen(false);
-    await refetch();
+      setIsModalOpen(false);
+      await refetch();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
+    }
   };
 
   const handleDelete = async (id: string, nama: string) => {
-    if (window.confirm(`Hapus data mahasiswa PKL "${nama}" dari sistem?`)) {
-      await authService.deleteMahasiswaPKL(id);
-      await refetch();
+    try {
+      if (window.confirm(`Hapus data mahasiswa PKL "${nama}" dari sistem?`)) {
+        await authService.deleteMahasiswaPKL(id);
+        await refetch();
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
   };
 
@@ -158,6 +183,14 @@ export const AdminMahasiswa: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {mahasiswaError && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError}</div>}
+      <div className="p-3 rounded-lg bg-blue-50 text-blue-900 text-sm flex flex-wrap items-center gap-3">
+        <span>Data lama hanya ada di browser sebelumnya? Salin sekali agar tersedia di perangkat lain.</span>
+        <button type="button" disabled={migrating} onClick={handleMigrateLocal} className="font-semibold underline disabled:opacity-50">
+          {migrating ? 'Menyalin...' : 'Salin data browser ke Supabase'}
+        </button>
+        {migrationNotice && <span role="status">{migrationNotice}</span>}
+      </div>
       {/* Header matching Screenshot 3 + Export Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

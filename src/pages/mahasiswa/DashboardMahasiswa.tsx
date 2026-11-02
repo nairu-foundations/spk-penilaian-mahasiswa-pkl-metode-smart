@@ -23,10 +23,10 @@ export const DashboardMahasiswa: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const { data: mahasiswaList, loading: loadingMhs } = useQuery(() =>
+  const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs } = useQuery(() =>
     authService.getMahasiswaPKLList()
   );
-  const { data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
+  const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
   const isLoading = loadingMhs || loadingKrit;
 
@@ -79,6 +79,7 @@ export const DashboardMahasiswa: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
       {/* Top Student Header Card - STRICTLY NO DOWNLOAD / UNDUH BUTTON */}
       <div className="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden border border-slate-800">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-blue-900/30 to-transparent pointer-events-none" />

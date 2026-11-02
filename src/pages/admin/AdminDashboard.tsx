@@ -35,37 +35,31 @@ import { Skeleton } from '../../components/common/Skeleton';
 
 export const AdminDashboard: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
-  const { data: mahasiswaList, loading: loadingMhs } = useQuery(() =>
+  const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs } = useQuery(() =>
     authService.getMahasiswaPKLList()
   );
   const { data: periodeList, loading: loadingPer } = useQuery(() =>
     spkService.getPeriode()
   );
-  const { data: kriteriaList } = useQuery(() => spkService.getKriteria());
+  const { error: kriteriaError, data: kriteriaList } = useQuery(() => spkService.getKriteria());
 
   const isLoading = loadingMhs || loadingPer;
 
-  const totalMahasiswa = mahasiswaList?.length || 25;
-  const periodeAktif = periodeList?.filter((p) => p.status === 'Aktif').length || 1;
-  const sudahDinilai = 18;
-  const belumDinilai = 7;
+  const totalMahasiswa = mahasiswaList?.length ?? 0;
+  const periodeAktif = periodeList?.filter((p) => p.status === 'Aktif').length ?? 0;
+  const sudahDinilai = mahasiswaList?.filter((m) => Object.keys(m.nilai_kriteria ?? {}).length > 0).length ?? 0;
+  const belumDinilai = totalMahasiswa - sudahDinilai;
 
-  // Line Chart Data: Nilai Rata-rata per Kriteria over weeks
-  const lineData = [
-    { name: 'Minggu 1', Kehadiran: 78, KetepatanWaktu: 70, Tugas: 68 },
-    { name: 'Minggu 2', Kehadiran: 84, KetepatanWaktu: 76, Tugas: 75 },
-    { name: 'Minggu 3', Kehadiran: 90, KetepatanWaktu: 85, Tugas: 82 },
-    { name: 'Minggu 4', Kehadiran: 94, KetepatanWaktu: 89, Tugas: 88 },
-  ];
-
-  // Pie Chart Data: Distribusi Peringkat
-  const pieData = [
-    { name: 'Peringkat 1', value: 5, color: '#2563eb' },
-    { name: 'Peringkat 2', value: 7, color: '#38bdf8' },
-    { name: 'Peringkat 3', value: 6, color: '#f59e0b' },
-    { name: 'Peringkat 4', value: 4, color: '#10b981' },
-    { name: 'Peringkat 5+', value: 3, color: '#ef4444' },
-  ];
+  const average = (code: string) => {
+    const scores = (mahasiswaList ?? []).flatMap(m => m.nilai_kriteria?.[code] === undefined ? [] : [Number(m.nilai_kriteria[code])]);
+    return scores.length ? Number((scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2)) : 0;
+  };
+  const lineData = [{ name: 'Saat ini', Kehadiran: average('C1'), KetepatanWaktu: average('C2'), Tugas: average('C3') }];
+  const pieData = [1,2,3,4,5].map((rank,index) => ({
+    name: rank === 5 ? 'Peringkat 5+' : `Peringkat ${rank}`,
+    value: (mahasiswaList ?? []).filter(m => rank === 5 ? (m.peringkat ?? 0) >= 5 : m.peringkat === rank).length,
+    color: ['#2563eb','#38bdf8','#f59e0b','#10b981','#ef4444'][index],
+  }));
 
   if (isLoading) {
     return (
@@ -86,6 +80,7 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
       {/* Title & Greeting with Role-Specific Styling */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -195,7 +190,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Tren Nilai Rata-rata per Kriteria SMART
+                Nilai Rata-rata Saat Ini per Kriteria SMART
               </h3>
               <p className="text-xs text-slate-500">
                 Perkembangan performa 3 Kriteria Benefit (C1, C2, C3) selama 4 minggu
@@ -317,7 +312,7 @@ export const AdminDashboard: React.FC = () => {
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Trophy Peringkat 1 (Andi Pratama: 0.92) siap disahkan
+                Hasil peringkat dihitung dari nilai yang tersimpan di Supabase
               </p>
             </Link>
 

@@ -13,8 +13,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles,
 }) => {
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, loading } = useAuth();
   const location = useLocation();
+
+  if (loading) return <div className="p-8">Memuat sesi akun...</div>;
 
   // If user is guest/not logged in
   if (!user || user.id === 'guest') {

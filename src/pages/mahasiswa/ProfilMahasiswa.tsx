@@ -15,22 +15,26 @@ export const ProfilMahasiswa: React.FC = () => {
   const [savedNotice, setSavedNotice] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+    try {
+      e.preventDefault();
+      if (!user) return;
 
-    authService.setCurrentUser({
-      ...user,
-      nama,
-      email,
-      nim,
-      prodi,
-      angkatan,
-      no_hp: noHp,
-    });
+      await authService.updateProfile({
+        ...user,
+        nama,
+        email,
+        nim,
+        prodi,
+        angkatan,
+        no_hp: noHp,
+      });
 
-    refreshUser();
-    setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 2500);
+      await refreshUser();
+      setSavedNotice(true);
+      setTimeout(() => setSavedNotice(false), 2500);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan.');
+    }
   };
 
   return (

@@ -1,247 +1,108 @@
+import { mahasiswaService } from './mahasiswaService';
+import { spkService } from './spkService';
+import { jalankanSMARTMahasiswa } from '../utils/smart';
 import { Role, UserProfile, MahasiswaPKL, AuditLog } from '../types';
-import rawMahasiswaData from '../../data/mahasiswa_pkl.json';
+import { database, checkError, readRows } from '../lib/database';
 
-export const SUPER_ADMIN_PROFILE: UserProfile = {
-  id: 'founder-1',
-  nama: 'Bpk. H. Rekso (Founder & CEO)',
-  email: 'founder@seveninc.co.id',
-  jabatan: 'Pemilik Perusahaan (Kuasa Penuh)',
-  role: 'super_admin',
-  kuasa_penuh: true,
-  avatar_url: '',
-  created_at: '2023-01-01T00:00:00Z',
+export const GUEST_PROFILE: UserProfile = {
+  id: 'guest', nama: 'Tamu', email: '', jabatan: 'Pengunjung', role: 'mahasiswa',
 };
-
-export const HRD_ADMIN_PROFILE: UserProfile = {
-  id: 'hrd-1',
-  nama: 'Siti Rahma, S.Psi. (HRD Officer)',
-  email: 'hrd@seveninc.co.id',
-  jabatan: 'HRD Pengelola Dashboard Operasional',
-  role: 'admin',
-  kuasa_penuh: false,
-  avatar_url: '',
-  created_at: '2023-06-01T00:00:00Z',
-};
-
-const getStored = <T>(key: string, fallback: T): T => {
-  try {
-    const raw = localStorage.getItem(`spk_${key}`);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const setStored = <T>(key: string, value: T): void => {
-  try {
-    localStorage.setItem(`spk_${key}`, JSON.stringify(value));
-  } catch (err) {
-    console.error('Failed to save to localStorage:', err);
-  }
-};
+let currentUser: UserProfile = GUEST_PROFILE;
 
 export const authService = {
-  getSuperAdminProfile(): UserProfile {
-    return SUPER_ADMIN_PROFILE;
+  getCurrentUser(): UserProfile { return currentUser; },
+
+  async loadCurrentUser(): Promise<UserProfile> {
+    const client = database();
+    const { data: { session } } = await client.auth.getSession();
+    if (!session) return (currentUser = GUEST_PROFILE);
+    const { data: { user }, error: authError } = await client.auth.getUser();
+    checkError(authError);
+    if (!user) return (currentUser = GUEST_PROFILE);
+    const { data, error } = await client.from('app_profiles').select('*').eq('id', user.id).single();
+    checkError(error);
+    if (!data) throw new Error('Profil akun belum tersedia di Supabase. Hubungi pengelola.');
+    return (currentUser = data);
   },
 
-  getHRDProfile(): UserProfile {
-    return HRD_ADMIN_PROFILE;
+  async signIn(email: string, password = '', _requestedRole?: Role): Promise<UserProfile> {
+    const loginEmail = email.trim().toLowerCase() === 'founder' ? 'founder@seveninc.co.id' : email.trim();
+    const { error } = await database().auth.signInWithPassword({ email: loginEmail, password });
+    checkError(error);
+    const profile = await this.loadCurrentUser();
+    return profile;
   },
 
-  getCurrentUser(): UserProfile {
-    return getStored<UserProfile>('current_user', HRD_ADMIN_PROFILE);
+  async signOut(): Promise<void> {
+    const { error } = await database().auth.signOut();
+    checkError(error);
+    currentUser = GUEST_PROFILE;
   },
 
-  setCurrentUser(user: UserProfile): void {
-    setStored('current_user', user);
+  async updateProfile(profile: UserProfile): Promise<UserProfile> {
+    const { data, error } = await database().from('app_profiles').update({
+      nama: profile.nama, no_hp: profile.no_hp, avatar_url: profile.avatar_url,
+      nim: profile.nim, prodi: profile.prodi, angkatan: profile.angkatan,
+    }).eq('id', currentUser.id).select().single();
+    checkError(error);
+    if (!data) throw new Error('Profil belum tersimpan.');
+    return (currentUser = data);
   },
 
-  async signIn(usernameOrEmail: string, _password?: string, requestedRole?: Role): Promise<UserProfile> {
-    const clean = usernameOrEmail.toLowerCase().trim();
-
-    // 1. Super Admin (Founder)
-    if (
-      requestedRole === 'super_admin' ||
-      clean === 'founder' ||
-      clean === 'owner' ||
-      clean === 'superadmin' ||
-      clean.includes('founder')
-    ) {
-      this.setCurrentUser(SUPER_ADMIN_PROFILE);
-      this.recordAuditLog(
-        SUPER_ADMIN_PROFILE.nama,
-        'super_admin',
-        'Login Sistem',
-        'Super Admin (Founder & Pemilik) masuk ke panel monitoring eksekutif.'
-      );
-      return SUPER_ADMIN_PROFILE;
-    }
-
-    // 2. Mahasiswa PKL
-    if (
-      requestedRole === 'mahasiswa' ||
-      clean.includes('@') ||
-      clean.startsWith('2024') ||
-      clean === 'mahasiswa' ||
-      clean.includes('andi') ||
-      clean.includes('rina') ||
-      clean.includes('siti') ||
-      clean.includes('budi') ||
-      clean.includes('dika')
-    ) {
-      const allMhs = await this.getMahasiswaPKLList();
-      const matched =
-        allMhs.find(
-          (m) =>
-            m.email.toLowerCase() === clean ||
-            m.nim === clean ||
-            m.nama.toLowerCase().includes(clean)
-        ) || allMhs[0];
-
-      const mhsProfile: UserProfile = {
-        id: matched.id,
-        nama: matched.nama,
-        email: matched.email,
-        jabatan: `Peserta Magang (${matched.bagian}) - PT Seven Inc.`,
-        role: 'mahasiswa',
-        nim: matched.nim,
-        bagian: matched.bagian,
-        institusi: matched.institusi,
-        periode: matched.periode,
-        kuasa_penuh: false,
-        created_at: new Date().toISOString(),
-      };
-
-      this.setCurrentUser(mhsProfile);
-      this.recordAuditLog(
-        matched.nama,
-        'mahasiswa',
-        'Login Mahasiswa',
-        `Mahasiswa PKL (${matched.email}) masuk ke portal nilai dan peringkat pribadi.`
-      );
-      return mhsProfile;
-    }
-
-    // 3. Default to Admin (HRD)
-    this.setCurrentUser(HRD_ADMIN_PROFILE);
-    this.recordAuditLog(
-      HRD_ADMIN_PROFILE.nama,
-      'admin',
-      'Login Sistem',
-      'Admin HRD masuk ke dashboard operasional PKL PT Seven Inc.'
-    );
-    return HRD_ADMIN_PROFILE;
-  },
-
-  signOut(): void {
-    localStorage.removeItem('spk_current_user');
-  },
+  async listUsers(): Promise<UserProfile[]> { return readRows('app_profiles', 'nama'); },
 
   // DATA MAHASISWA PKL
   async getMahasiswaPKLList(): Promise<MahasiswaPKL[]> {
-    return getStored<MahasiswaPKL[]>('mahasiswa_pkl_data', rawMahasiswaData as MahasiswaPKL[]);
+    const [students, criteria] = await Promise.all([mahasiswaService.list(), spkService.getKriteria()]);
+    const calculated = jalankanSMARTMahasiswa({ mahasiswaList: students, kriteriaList: criteria });
+    const results = new Map(calculated.ranking.map((item) => [item.id, item]));
+    return students.map((student) => {
+      const result = results.get(student.id)!;
+      return { ...student, utility: result.utilitas, skor_akhir_smart: result.skor_akhir,
+        nilai_skala_100: result.nilai_skala_100, peringkat: result.peringkat,
+        keterangan_nilai: result.keterangan };
+    });
   },
 
   async saveMahasiswaPKL(data: MahasiswaPKL): Promise<MahasiswaPKL> {
-    const current = await this.getMahasiswaPKLList();
-    const idx = current.findIndex(
-      (m) => m.id === data.id || m.email === data.email || (data.nim && m.nim === data.nim)
-    );
+    const [saved] = await mahasiswaService.saveMany([data]);
+    return saved;
+  },
 
-    let updated: MahasiswaPKL[];
-    if (idx >= 0) {
-      updated = [...current];
-      updated[idx] = { ...updated[idx], ...data };
-    } else {
-      updated = [
-        ...current,
-        {
-          ...data,
-          id: data.id || `mhs-${Date.now()}`,
-        },
-      ];
-    }
+  async importMahasiswaPKL(data: MahasiswaPKL[], replace = false): Promise<MahasiswaPKL[]> {
+    return mahasiswaService.saveMany(data, replace);
+  },
 
-    setStored('mahasiswa_pkl_data', updated);
-    this.recordAuditLog(
-      this.getCurrentUser().nama,
-      this.getCurrentUser().role,
-      'Simpan Mahasiswa PKL',
-      `Menyimpan data mahasiswa ${data.nama} (Email: ${data.email}).`
-    );
-    return data;
+  async migrateLocalMahasiswa(): Promise<number> {
+    let local: MahasiswaPKL[];
+    try { local = JSON.parse(localStorage.getItem('spk_mahasiswa_pkl_data') ?? '[]'); }
+    catch { throw new Error('Cadangan data browser tidak dapat dibaca.'); }
+    if (!Array.isArray(local) || !local.length) throw new Error('Tidak ada data mahasiswa lama di browser ini.');
+    await mahasiswaService.saveMany(local);
+    return local.length;
   },
 
   async deleteMahasiswaPKL(id: string): Promise<boolean> {
-    const current = await this.getMahasiswaPKLList();
-    const target = current.find((m) => m.id === id);
-    const updated = current.filter((m) => m.id !== id);
-    setStored('mahasiswa_pkl_data', updated);
-    if (target) {
-      this.recordAuditLog(
-        this.getCurrentUser().nama,
-        this.getCurrentUser().role,
-        'Hapus Mahasiswa PKL',
-        `Menghapus data mahasiswa ${target.nama} (Email: ${target.email}).`
-      );
-    }
+    await mahasiswaService.remove(id);
     return true;
   },
 
   async resetMahasiswaPKLList(): Promise<MahasiswaPKL[]> {
-    localStorage.removeItem('spk_mahasiswa_pkl_data');
-    const defaults = rawMahasiswaData as MahasiswaPKL[];
-    setStored('mahasiswa_pkl_data', defaults);
-    this.recordAuditLog(
-      this.getCurrentUser().nama,
-      this.getCurrentUser().role,
-      'Reset Data Penilaian SMART',
-      'Mengembalikan seluruh data nilai mahasiswa PKL ke 5 data alternatif benchmark awal.'
-    );
-    return defaults;
+    const current = await mahasiswaService.list();
+    return mahasiswaService.saveMany(current.map(row => ({...row,nilai_kriteria:{},utility:{},skor_akhir_smart:0,nilai_skala_100:0,peringkat:0}))); 
   },
 
-  // AUDIT LOGS FOR FOUNDER MONITORING
-  getAuditLogs(): AuditLog[] {
-    return getStored<AuditLog[]>('audit_logs', [
-      {
-        id: 'log-1',
-        aktor: 'Siti Rahma, S.Psi. (HRD)',
-        role: 'admin',
-        aksi: 'Input Penilaian Mahasiswa',
-        rincian: 'Memperbarui skor kedisiplinan dan kehadiran untuk 5 mahasiswa Periode 1 - 2025.',
-        waktu: '2025-01-15 14:30 WIB',
-      },
-      {
-        id: 'log-2',
-        aktor: 'Bpk. H. Rekso (Founder)',
-        role: 'super_admin',
-        aksi: 'Pengesahan Peringkat SMART',
-        rincian: 'Mengesahkan penetapan Peringkat 1 untuk Andi Pratama dengan skor 0.9200.',
-        waktu: '2025-01-16 09:15 WIB',
-      },
-      {
-        id: 'log-3',
-        aktor: 'Siti Rahma, S.Psi. (HRD)',
-        role: 'admin',
-        aksi: 'Ekspor Data Mahasiswa',
-        rincian: 'Mengunduh rekapitulasi data mahasiswa PKL dalam format CSV dan JSON.',
-        waktu: '2025-01-17 11:20 WIB',
-      },
-    ]);
+  async getAuditLogs(): Promise<AuditLog[]> {
+    return readRows('audit_logs', 'waktu').then((rows) => (rows as AuditLog[]).reverse());
   },
 
-  recordAuditLog(aktor: string, role: Role, aksi: string, rincian: string) {
-    const logs = this.getAuditLogs();
-    const newLog: AuditLog = {
-      id: `log-${Date.now()}`,
-      aktor,
-      role,
-      aksi,
-      rincian,
-      waktu: new Date().toLocaleString('id-ID'),
-    };
-    setStored('audit_logs', [newLog, ...logs].slice(0, 50));
+  async recordAuditLog(_aktor: string, _role: Role, aksi: string, rincian: string): Promise<void> {
+    const { error } = await database().rpc('record_app_audit', { p_aksi: aksi, p_rincian: rincian });
+    checkError(error);
+  },
+
+  async certifyRanking(periode: string): Promise<void> {
+    const { error } = await database().rpc('certify_smart_ranking', { p_periode: periode });
+    checkError(error);
   },
 };

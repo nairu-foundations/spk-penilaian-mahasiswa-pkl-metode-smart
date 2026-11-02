@@ -1,103 +1,54 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, UserProfile } from '../types';
-import { authService, SUPER_ADMIN_PROFILE, HRD_ADMIN_PROFILE } from '../services/authService';
+import { authService, GUEST_PROFILE } from '../services/authService';
+import { supabase } from '../lib/supabaseClient';
 
 interface AuthContextType {
   user: UserProfile;
   role: Role;
+  loading: boolean;
   isSuperAdmin: boolean;
   isAdminHRD: boolean;
   isMahasiswa: boolean;
-  login: (usernameOrEmail: string, pass?: string, role?: Role) => Promise<UserProfile>;
-  logout: () => void;
-  switchRole: (newRole: Role) => void;
-  refreshUser: () => void;
+  login: (email: string, password?: string, role?: Role) => Promise<UserProfile>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile>(() => authService.getCurrentUser());
-
+  const [user, setUser] = useState<UserProfile>(GUEST_PROFILE);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const refreshUser = async () => {
+    setUser(await authService.loadCurrentUser());
+  };
   useEffect(() => {
-    setUser(authService.getCurrentUser());
-  }, []);
-
-  const login = async (usernameOrEmail: string, pass?: string, role?: Role) => {
-    const logged = await authService.signIn(usernameOrEmail, pass, role);
-    setUser(logged);
-    return logged;
-  };
-
-  const logout = () => {
-    authService.signOut();
-    const guestUser: UserProfile = {
-      id: 'guest',
-      nama: 'Tamu / Pengunjung',
-      email: '',
-      jabatan: 'Pengunjung Sistem',
-      role: 'mahasiswa',
+    let active = true;
+    const refresh = async () => {
+      try { const profile = await authService.loadCurrentUser(); if (active) { setUser(profile); setError(''); } }
+      catch (e) { if (active) { setUser(GUEST_PROFILE); setError(e instanceof Error ? e.message : 'Gagal memuat sesi akun.'); } }
+      finally { if (active) setLoading(false); }
     };
-    authService.setCurrentUser(guestUser);
-    setUser(guestUser);
+    void refresh();
+    // Run profile queries outside the synchronous Auth callback to avoid auth-lock deadlocks.
+    const { data } = supabase?.auth.onAuthStateChange(() => { queueMicrotask(() => { if (active) void refresh(); }); }) ?? { data: null };
+    return () => { active = false; data?.subscription.unsubscribe(); };
+  }, []);
+  const login = async (email: string, password?: string, role?: Role) => {
+    const profile = await authService.signIn(email, password, role);
+    setUser(profile); setError(''); return profile;
   };
-
-  const switchRole = (newRole: Role) => {
-    if (newRole === 'super_admin') {
-      authService.setCurrentUser(SUPER_ADMIN_PROFILE);
-      setUser(SUPER_ADMIN_PROFILE);
-    } else if (newRole === 'admin') {
-      authService.setCurrentUser(HRD_ADMIN_PROFILE);
-      setUser(HRD_ADMIN_PROFILE);
-    } else {
-      const defaultMhs: UserProfile = {
-        id: 'mhs-1',
-        nama: 'Andi Pratama',
-        nim: '20241001',
-        email: 'andi.pratama@mail.ugm.ac.id',
-        bagian: 'IT / Software Engineering',
-        institusi: 'Universitas Gadjah Mada',
-        periode: 'Periode 1 - 2025',
-        jabatan: 'Peserta Magang IT - PT Seven Inc.',
-        role: 'mahasiswa',
-      };
-      authService.setCurrentUser(defaultMhs);
-      setUser(defaultMhs);
-    }
-  };
-
-  const refreshUser = () => {
-    setUser(authService.getCurrentUser());
-  };
-
-  const role: Role = user.role || 'mahasiswa';
-  const isSuperAdmin = role === 'super_admin';
-  const isAdminHRD = role === 'admin';
-  const isMahasiswa = role === 'mahasiswa';
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        role,
-        isSuperAdmin,
-        isAdminHRD,
-        isMahasiswa,
-        login,
-        logout,
-        switchRole,
-        refreshUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const logout = async () => { await authService.signOut(); setUser(GUEST_PROFILE); };
+  const role = user.role;
+  return <AuthContext.Provider value={{user, role, loading, login, logout, refreshUser,
+    isSuperAdmin: role === 'super_admin', isAdminHRD: role === 'admin',
+    isMahasiswa: role === 'mahasiswa' && user.id !== 'guest'}}>
+    {error && <div role="alert" className="p-3 bg-red-50 text-red-800 text-sm">{error}</div>}
+    {children}
+  </AuthContext.Provider>;
 };
-
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth harus digunakan di dalam AuthProvider');
-  }
+  if (!context) throw new Error('useAuth harus digunakan di dalam AuthProvider');
   return context;
 };

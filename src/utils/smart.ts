@@ -176,26 +176,13 @@ export function jalankanSMARTMahasiswa({
 
     kriteriaAktif.forEach((k) => {
       // Lookup nilai mentah (skala 0 - 100)
-      let val = 80;
+      let val = 0;
       if (nilaiMatrix && nilaiMatrix[mhs.id] && nilaiMatrix[mhs.id][k.kode] !== undefined) {
         val = Number(nilaiMatrix[mhs.id][k.kode]);
       } else if (nilaiMatrix && nilaiMatrix[mhs.id] && nilaiMatrix[mhs.id][k.id] !== undefined) {
         val = Number(nilaiMatrix[mhs.id][k.id]);
       } else if (mhs.nilai_kriteria && mhs.nilai_kriteria[k.kode] !== undefined) {
         val = Number(mhs.nilai_kriteria[k.kode]);
-      } else {
-        // Fallback default nilai benchmark kasus
-        if (kodeAlt === 'A1' || mhs.nama.includes('Andi')) {
-          val = k.kode === 'C1' ? 95 : k.kode === 'C2' ? 90 : 92;
-        } else if (kodeAlt === 'A2' || mhs.nama.includes('Rina')) {
-          val = k.kode === 'C1' ? 95 : k.kode === 'C2' ? 90 : 85;
-        } else if (kodeAlt === 'A3' || mhs.nama.includes('Siti')) {
-          val = k.kode === 'C1' ? 90 : k.kode === 'C2' ? 95 : 85;
-        } else if (kodeAlt === 'A4' || mhs.nama.includes('Budi')) {
-          val = k.kode === 'C1' ? 80 : k.kode === 'C2' ? 85 : 75;
-        } else if (kodeAlt === 'A5' || mhs.nama.includes('Dika')) {
-          val = k.kode === 'C1' ? 75 : k.kode === 'C2' ? 80 : 70;
-        }
       }
 
       nilaiMentah[k.kode] = val;

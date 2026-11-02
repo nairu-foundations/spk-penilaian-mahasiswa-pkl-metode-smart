@@ -19,10 +19,10 @@ import { Skeleton } from '../../components/common/Skeleton';
 
 export const AdminHasilPeringkat: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
-  const { data: mahasiswaList, loading: loadingMhs, refetch: refetchMhs } = useQuery(() =>
+  const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs, refetch: refetchMhs } = useQuery(() =>
     authService.getMahasiswaPKLList()
   );
-  const { data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
+  const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
   const [selectedPeriode, setSelectedPeriode] = useState('Periode 1 - 2025');
   const [esahanSuccess, setEsahanSuccess] = useState(false);
@@ -92,12 +92,12 @@ export const AdminHasilPeringkat: React.FC = () => {
     link.click();
     document.body.removeChild(link);
 
-    authService.recordAuditLog(
+    void authService.recordAuditLog(
       user.nama,
       user.role,
       'Ekspor Hasil SMART CSV',
       `Mengekspor rekapitulasi peringkat penilaian SMART untuk ${selectedPeriode}.`
-    );
+    ).catch(error => window.alert(error.message));
   };
 
   const handleExportJSON = () => {
@@ -110,29 +110,29 @@ export const AdminHasilPeringkat: React.FC = () => {
     downloadAnchor.click();
     downloadAnchor.remove();
 
-    authService.recordAuditLog(
+    void authService.recordAuditLog(
       user.nama,
       user.role,
       'Ekspor Hasil SMART JSON',
       `Mengekspor file JSON peringkat penilaian SMART untuk ${selectedPeriode}.`
-    );
+    ).catch(error => window.alert(error.message));
   };
 
   // Super Admin / Founder Validation & Endorsement Action
-  const handlePengesahanFounder = () => {
+  const handlePengesahanFounder = async () => {
     if (!top1) return;
-    authService.recordAuditLog(
-      user.nama,
-      'super_admin',
-      'Pengesahan Hasil SMART',
-      `Founder secara resmi mengesahkan penetapan Juara 1 untuk ${top1.nama} (Nilai Akhir SMART: ${top1.skor_akhir.toFixed(4)} / ${top1.nilai_skala_100.toFixed(2)}).`
-    );
-    setEsahanSuccess(true);
-    setTimeout(() => setEsahanSuccess(false), 3500);
+    try {
+      await authService.certifyRanking(selectedPeriode);
+      setEsahanSuccess(true);
+      setTimeout(() => setEsahanSuccess(false), 3500);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal mengesahkan hasil.');
+    }
   };
 
   return (
     <div className="space-y-6">
+      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
       {/* Header matching Screen 8 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

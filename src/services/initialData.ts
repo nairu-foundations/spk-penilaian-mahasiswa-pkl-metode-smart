@@ -30,10 +30,10 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
 
 export const INITIAL_HERO: HeroSection = {
   id: 'hero-1',
-  judul: 'Temukan Tempat PKL Terbaik Sesuai Preferensi & Kompetensi Anda',
+  judul: 'Penilaian Kedisiplinan & Kinerja Mahasiswa PKL Metode SMART',
   subjudul: 'Didukung metode ilmiah SMART (Simple Multi Attribute Rating Technique) yang objektif, transparan, dan mempertimbangkan kesesuaian prodi, fasilitas, reputasi, hingga prospek karier.',
-  teks_tombol_utama: 'Mulai Hitung Rekomendasi',
-  link_tombol_utama: '/proses-smart',
+  teks_tombol_utama: 'Lihat Hasil & Peringkat Mahasiswa',
+  link_tombol_utama: '#hasil-peringkat',
   teks_tombol_sekunder: 'Jelajahi Mitra PKL',
   link_tombol_sekunder: '/tempat-pkl',
   gambar_url: '',

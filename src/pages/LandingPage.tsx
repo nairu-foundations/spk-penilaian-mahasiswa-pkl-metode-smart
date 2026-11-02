@@ -16,6 +16,7 @@ import {
   Calculator,
 } from 'lucide-react';
 import { useQuery } from '../hooks/useData';
+import { contentService } from '../services/contentService';
 import { authService } from '../services/authService';
 import { spkService } from '../services/spkService';
 import { jalankanSMARTMahasiswa } from '../utils/smart';
@@ -25,12 +26,14 @@ import { MahasiswaPKL } from '../types';
 
 export const LandingPage: React.FC = () => {
   const { isMahasiswa, isAdminHRD, isSuperAdmin } = useAuth();
-  const {
+  const { error: mahasiswaError,
     data: mahasiswaList,
     loading: loadingMhs,
     refetch: refetchMhs,
   } = useQuery(() => authService.getMahasiswaPKLList());
-  const { data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
+  const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
+
+  const { data: hero } = useQuery(() => contentService.getHero());
 
   const [selectedPeriode] = useState('Periode 1 - 2025');
 
@@ -125,7 +128,7 @@ export const LandingPage: React.FC = () => {
   // Open modal to add a new candidate into SMART
   const handleOpenAddModal = () => {
     setEditingStudentId(null);
-    const nextNum = (mahasiswaList?.length || 5) + 1;
+    const nextNum = (mahasiswaList?.length ?? 0) + 1;
     setFormNama('');
     setFormEmail(`mahasiswa${nextNum}@mail.ac.id`);
     setFormInstitusi('Universitas Gadjah Mada');
@@ -156,61 +159,69 @@ export const LandingPage: React.FC = () => {
 
   // Submit Modal: Save and Recalculate
   const handleSaveStudentModal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formNama.trim() || !formEmail.trim()) {
-      alert('Mohon lengkapi nama dan email mahasiswa.');
-      return;
+    try {
+      e.preventDefault();
+      if (!formNama.trim() || !formEmail.trim()) {
+        alert('Mohon lengkapi nama dan email mahasiswa.');
+        return;
+      }
+
+      const c1 = Math.max(0, Math.min(100, Number(formC1) || 0));
+      const c2 = Math.max(0, Math.min(100, Number(formC2) || 0));
+      const c3 = Math.max(0, Math.min(100, Number(formC3) || 0));
+
+      let targetStudent: MahasiswaPKL;
+      if (editingStudentId) {
+        const existing = mahasiswaList?.find((m) => m.id === editingStudentId);
+        targetStudent = {
+          ...existing!,
+          nama: formNama.trim(),
+          email: formEmail.trim(),
+          institusi: formInstitusi.trim(),
+          bagian: formBagian.trim(),
+          nilai_kriteria: { C1: c1, C2: c2, C3: c3 },
+        };
+      } else {
+        const codeIndex = (mahasiswaList?.length ?? 0) + 1;
+        targetStudent = {
+          id: `mhs-${Date.now()}`,
+          nama: formNama.trim(),
+          email: formEmail.trim(),
+          nim: `2024100${codeIndex}`,
+          institusi: formInstitusi.trim(),
+          bagian: formBagian.trim(),
+          periode: 'Periode 1 - 2025',
+          kode_alternatif: `A${codeIndex}`,
+          status: 'Aktif',
+          tanggal_mulai: '2025-01-01',
+          tanggal_selesai: '2025-06-30',
+          no_hp: '081234567890',
+          nilai_kriteria: { C1: c1, C2: c2, C3: c3 },
+        };
+      }
+
+      await authService.saveMahasiswaPKL(targetStudent);
+      await refetchMhs();
+      setIsModalOpen(false);
+
+      setNotification(`Data ${targetStudent.nama} berhasil dimasukkan ke dalam perhitungan SMART!`);
+      setTimeout(() => setNotification(null), 4000);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
-
-    const c1 = Math.max(0, Math.min(100, Number(formC1) || 0));
-    const c2 = Math.max(0, Math.min(100, Number(formC2) || 0));
-    const c3 = Math.max(0, Math.min(100, Number(formC3) || 0));
-
-    let targetStudent: MahasiswaPKL;
-    if (editingStudentId) {
-      const existing = mahasiswaList?.find((m) => m.id === editingStudentId);
-      targetStudent = {
-        ...existing!,
-        nama: formNama.trim(),
-        email: formEmail.trim(),
-        institusi: formInstitusi.trim(),
-        bagian: formBagian.trim(),
-        nilai_kriteria: { C1: c1, C2: c2, C3: c3 },
-      };
-    } else {
-      const codeIndex = (mahasiswaList?.length || 5) + 1;
-      targetStudent = {
-        id: `mhs-${Date.now()}`,
-        nama: formNama.trim(),
-        email: formEmail.trim(),
-        nim: `2024100${codeIndex}`,
-        institusi: formInstitusi.trim(),
-        bagian: formBagian.trim(),
-        periode: 'Periode 1 - 2025',
-        kode_alternatif: `A${codeIndex}`,
-        status: 'Aktif',
-        tanggal_mulai: '2025-01-01',
-        tanggal_selesai: '2025-06-30',
-        no_hp: '081234567890',
-        nilai_kriteria: { C1: c1, C2: c2, C3: c3 },
-      };
-    }
-
-    await authService.saveMahasiswaPKL(targetStudent);
-    await refetchMhs();
-    setIsModalOpen(false);
-
-    setNotification(`Data ${targetStudent.nama} berhasil dimasukkan ke dalam perhitungan SMART!`);
-    setTimeout(() => setNotification(null), 4000);
   };
 
   // Reset to original benchmark
   const handleResetDefaults = async () => {
-    if (confirm('Kembalikan data perhitungan ke 5 data mahasiswa benchmark awal (Andi, Rina, Siti, Budi, Dika)?')) {
-      await authService.resetMahasiswaPKLList();
-      await refetchMhs();
-      setNotification('Data telah direset ke 5 alternatif benchmark awal.');
-      setTimeout(() => setNotification(null), 3000);
+    try {
+      if (confirm('Kosongkan seluruh nilai penilaian? Identitas mahasiswa tetap dipertahankan.')) {
+        await authService.resetMahasiswaPKLList();
+        await refetchMhs();
+        setNotification('Seluruh nilai penilaian telah dikosongkan di database.');
+        setTimeout(() => setNotification(null), 3000);
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
   };
 
@@ -237,6 +248,7 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="space-y-16 pb-20">
+      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
       {/* 1. HERO HEADER: FOCUS ON MAHASISWA PKL EVALUATION */}
       <section className="relative overflow-hidden bg-slate-900 text-white py-16 lg:py-20 border-b border-slate-800">
         <div className="absolute inset-0 bg-[radial-gradient(#1e3a8a_1px,transparent_1px)] [background-size:16px_16px] opacity-25 pointer-events-none" />
@@ -248,20 +260,22 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight">
-            Penilaian Kedisiplinan &amp; Kinerja Mahasiswa PKL Metode SMART
+            {hero?.judul ?? 'Penilaian Kedisiplinan & Kinerja Mahasiswa PKL Metode SMART'}
           </h1>
+
+          {hero?.subjudul && <p className="mt-4 max-w-3xl mx-auto text-slate-300">{hero.subjudul}</p>}
 
           {/* Quick Action Badges */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a
-              href="#hasil-peringkat"
+              href={hero?.link_tombol_utama ?? '#hasil-peringkat'}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2"
             >
               <Trophy className="w-4 h-4" />
-              <span>Lihat Hasil &amp; Peringkat Mahasiswa</span>
+              <span>{hero?.teks_tombol_utama ?? 'Lihat Hasil & Peringkat Mahasiswa'}</span>
             </a>
 
-            {!isMahasiswa && (
+            {(isAdminHRD || isSuperAdmin) && (
               <button
                 onClick={handleOpenAddModal}
                 className="px-5 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/40 text-blue-300 font-semibold text-sm rounded-xl transition-all flex items-center gap-2 shadow-xs"
@@ -271,7 +285,7 @@ export const LandingPage: React.FC = () => {
               </button>
             )}
 
-            {!isMahasiswa && (isAdminHRD || isSuperAdmin) && (
+            {(isAdminHRD || isSuperAdmin) && (
               <a
                 href="/data/mahasiswa_pkl.csv"
                 download="data_mahasiswa_pkl.csv"
@@ -286,7 +300,7 @@ export const LandingPage: React.FC = () => {
           <div className="mt-8 pt-6 border-t border-slate-800 max-w-xl mx-auto flex items-center justify-center gap-6 text-xs text-slate-400 font-mono">
             <span>Periode: 1 Jan - 30 Jun 2025</span>
             <span aria-hidden="true">&middot;</span>
-            <span>Total: {mahasiswaList?.length || 5} Mahasiswa Aktif</span>
+            <span>Total: {mahasiswaList?.length ?? 0} Mahasiswa Aktif</span>
             <span aria-hidden="true">&middot;</span>
             <span>PT Seven Inc.</span>
           </div>
@@ -318,16 +332,16 @@ export const LandingPage: React.FC = () => {
               Hasil &amp; Peringkat Mahasiswa PKL
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Rekapitulasi skor SMART dan peringkat resmi mahasiswa Periode 1 - 2025 ({mahasiswaList?.length || 5} Alternatif)
+              Rekapitulasi skor SMART dan peringkat resmi mahasiswa Periode 1 - 2025 ({mahasiswaList?.length ?? 0} Alternatif)
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {!isMahasiswa && (
+            {(isAdminHRD || isSuperAdmin) && (
               <>
                 <button
                   onClick={handleResetDefaults}
-                  title="Kembalikan data ke 5 benchmark awal"
+                  title="Kosongkan nilai penilaian"
                   className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -344,7 +358,7 @@ export const LandingPage: React.FC = () => {
               </>
             )}
 
-            {!isMahasiswa && (isAdminHRD || isSuperAdmin) && (
+            {(isAdminHRD || isSuperAdmin) && (
               <>
                 <button
                   onClick={handlePrint}
@@ -449,7 +463,7 @@ export const LandingPage: React.FC = () => {
                     <th className="py-3.5 px-4 text-center font-bold text-blue-600">Nilai Akhir (Vi)</th>
                     <th className="py-3.5 px-4 text-center font-bold text-slate-900 dark:text-white">Skala 100</th>
                     <th className="py-3.5 px-4 text-center">Keterangan</th>
-                    {!isMahasiswa && <th className="py-3.5 px-4 text-center w-20">Aksi</th>}
+                    {(isAdminHRD || isSuperAdmin) && <th className="py-3.5 px-4 text-center w-20">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -524,7 +538,7 @@ export const LandingPage: React.FC = () => {
                         </span>
                       </td>
 
-                      {!isMahasiswa && (
+                      {(isAdminHRD || isSuperAdmin) && (
                         <td className="py-4 px-4 text-center">
                           <button
                             onClick={() => handleOpenEditModal(item.id)}

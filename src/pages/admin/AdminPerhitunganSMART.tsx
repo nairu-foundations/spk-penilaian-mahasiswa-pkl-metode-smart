@@ -35,12 +35,12 @@ import {
 } from '../../utils/excelHelper';
 
 export const AdminPerhitunganSMART: React.FC = () => {
-  const {
+  const { error: mahasiswaError,
     data: mahasiswaList,
     loading: loadingMhs,
     refetch: refetchMhs,
   } = useQuery(() => authService.getMahasiswaPKLList());
-  const { data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
+  const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
   const [activeStep, setActiveStep] = useState<number>(4);
   const [calculationResult, setCalculationResult] = useState<SMARTMahasiswaResult | null>(null);
@@ -94,28 +94,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
     if (!excelParsedData || excelParsedData.length === 0) return;
     setIsImportingExcel(true);
     try {
-      // 1. Send batch to backend if available
-      try {
-        await fetch('/api/smart/import-batch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mahasiswa: excelParsedData,
-            replaceExisting: replaceMode,
-          }),
-        });
-      } catch {
-        // safe fallback
-      }
-
-      // 2. Persist locally to storage / authService
-      if (replaceMode) {
-        localStorage.setItem('spk_mahasiswa_pkl_data', JSON.stringify(excelParsedData));
-      } else {
-        for (const m of excelParsedData) {
-          await authService.saveMahasiswaPKL(m);
-        }
-      }
+      await authService.importMahasiswaPKL(excelParsedData, replaceMode);
 
       // 3. Refetch student list
       await refetchMhs();
@@ -174,7 +153,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
             C3: item.nilai_mentah.C3 ?? 80,
           };
         });
-        setMatrixDraft(draft);
+        if (!isInlineEdit) setMatrixDraft(draft);
       } catch (err) {
         console.warn('Auto calculation warning:', err);
       }
@@ -238,118 +217,129 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
   // Submit Modal: Insert / Update Student and run SMART
   const handleSaveStudentModal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formNama.trim() || !formEmail.trim()) {
-      alert('Mohon isi nama lengkap dan email mahasiswa.');
-      return;
+    try {
+      e.preventDefault();
+      if (!formNama.trim() || !formEmail.trim()) {
+        alert('Mohon isi nama lengkap dan email mahasiswa.');
+        return;
+      }
+
+      const c1 = Math.max(0, Math.min(100, Number(formC1) || 0));
+      const c2 = Math.max(0, Math.min(100, Number(formC2) || 0));
+      const c3 = Math.max(0, Math.min(100, Number(formC3) || 0));
+
+      let targetStudent: MahasiswaPKL;
+      if (editingStudentId) {
+        const existing = mahasiswaList?.find((m) => m.id === editingStudentId);
+        targetStudent = {
+          ...existing!,
+          nama: formNama.trim(),
+          email: formEmail.trim(),
+          institusi: formInstitusi.trim(),
+          bagian: formBagian.trim(),
+          nilai_kriteria: {
+            C1: c1,
+            C2: c2,
+            C3: c3,
+          },
+        };
+      } else {
+        const codeIndex = (mahasiswaList?.length || 5) + 1;
+        targetStudent = {
+          id: `mhs-${Date.now()}`,
+          nama: formNama.trim(),
+          email: formEmail.trim(),
+          nim: `2024100${codeIndex}`,
+          institusi: formInstitusi.trim(),
+          bagian: formBagian.trim(),
+          periode: 'Periode 1 - 2025',
+          kode_alternatif: `A${codeIndex}`,
+          status: 'Aktif',
+          tanggal_mulai: '2025-01-01',
+          tanggal_selesai: '2025-06-30',
+          no_hp: '081234567890',
+          nilai_kriteria: {
+            C1: c1,
+            C2: c2,
+            C3: c3,
+          },
+        };
+      }
+
+      await authService.saveMahasiswaPKL(targetStudent);
+      await refetchMhs();
+      setIsModalOpen(false);
+
+      setNotification({
+        type: 'success',
+        message: `Data mahasiswa ${targetStudent.nama} berhasil dimasukkan ke dalam perhitungan SMART!`,
+      });
+      setTimeout(() => setNotification(null), 4000);
+      setActiveStep(4); // Switch to Results tab to see new rank
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
-
-    const c1 = Math.max(0, Math.min(100, Number(formC1) || 0));
-    const c2 = Math.max(0, Math.min(100, Number(formC2) || 0));
-    const c3 = Math.max(0, Math.min(100, Number(formC3) || 0));
-
-    let targetStudent: MahasiswaPKL;
-    if (editingStudentId) {
-      const existing = mahasiswaList?.find((m) => m.id === editingStudentId);
-      targetStudent = {
-        ...existing!,
-        nama: formNama.trim(),
-        email: formEmail.trim(),
-        institusi: formInstitusi.trim(),
-        bagian: formBagian.trim(),
-        nilai_kriteria: {
-          C1: c1,
-          C2: c2,
-          C3: c3,
-        },
-      };
-    } else {
-      const codeIndex = (mahasiswaList?.length || 5) + 1;
-      targetStudent = {
-        id: `mhs-${Date.now()}`,
-        nama: formNama.trim(),
-        email: formEmail.trim(),
-        nim: `2024100${codeIndex}`,
-        institusi: formInstitusi.trim(),
-        bagian: formBagian.trim(),
-        periode: 'Periode 1 - 2025',
-        kode_alternatif: `A${codeIndex}`,
-        status: 'Aktif',
-        tanggal_mulai: '2025-01-01',
-        tanggal_selesai: '2025-06-30',
-        no_hp: '081234567890',
-        nilai_kriteria: {
-          C1: c1,
-          C2: c2,
-          C3: c3,
-        },
-      };
-    }
-
-    await authService.saveMahasiswaPKL(targetStudent);
-    await refetchMhs();
-    setIsModalOpen(false);
-
-    setNotification({
-      type: 'success',
-      message: `Data mahasiswa ${targetStudent.nama} berhasil dimasukkan ke dalam perhitungan SMART!`,
-    });
-    setTimeout(() => setNotification(null), 4000);
-    setActiveStep(4); // Switch to Results tab to see new rank
   };
 
   // Delete student from SMART calculation
   const handleDeleteStudent = async (id: string, nama: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus mahasiswa ${nama} dari daftar perhitungan SMART?`)) {
-      await authService.deleteMahasiswaPKL(id);
-      await refetchMhs();
-      setNotification({
-        type: 'success',
-        message: `Mahasiswa ${nama} telah dihapus dari perhitungan SMART.`,
-      });
-      setTimeout(() => setNotification(null), 3000);
+    try {
+      if (confirm(`Apakah Anda yakin ingin menghapus mahasiswa ${nama} dari daftar perhitungan SMART?`)) {
+        await authService.deleteMahasiswaPKL(id);
+        await refetchMhs();
+        setNotification({
+          type: 'success',
+          message: `Mahasiswa ${nama} telah dihapus dari perhitungan SMART.`,
+        });
+        setTimeout(() => setNotification(null), 3000);
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
   };
 
   // Reset to default 5 benchmark students
   const handleResetDefaults = async () => {
-    if (confirm('Apakah Anda ingin mereset seluruh data kembali ke 5 mahasiswa benchmark awal (Andi, Rina, Siti, Budi, Dika)?')) {
-      await authService.resetMahasiswaPKLList();
-      await refetchMhs();
-      setNotification({
-        type: 'success',
-        message: 'Data perhitungan SMART telah dikembalikan ke 5 data alternatif benchmark awal.',
-      });
-      setTimeout(() => setNotification(null), 3000);
+    try {
+      if (confirm('Kosongkan seluruh nilai penilaian? Identitas mahasiswa tetap dipertahankan.')) {
+        await authService.resetMahasiswaPKLList();
+        await refetchMhs();
+        setNotification({
+          type: 'success',
+          message: 'Nilai penilaian telah dikosongkan di database.',
+        });
+        setTimeout(() => setNotification(null), 3000);
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
   };
 
   // Save changes from Step 2 inline matrix inputs
   const handleSaveInlineMatrix = async () => {
-    if (!mahasiswaList) return;
+    try {
+      if (!mahasiswaList) return;
 
-    for (const mhs of mahasiswaList) {
-      const draft = matrixDraft[mhs.id];
-      if (draft) {
-        const updatedMhs: MahasiswaPKL = {
-          ...mhs,
-          nilai_kriteria: {
-            C1: Math.max(0, Math.min(100, draft.C1)),
-            C2: Math.max(0, Math.min(100, draft.C2)),
-            C3: Math.max(0, Math.min(100, draft.C3)),
-          },
-        };
-        await authService.saveMahasiswaPKL(updatedMhs);
-      }
+      const updates = mahasiswaList.filter((mhs) => matrixDraft[mhs.id]).map((mhs) => {
+        const draft = matrixDraft[mhs.id];
+        return { ...mhs, nilai_kriteria: {
+          C1: Math.max(0, Math.min(100, draft.C1)),
+          C2: Math.max(0, Math.min(100, draft.C2)),
+          C3: Math.max(0, Math.min(100, draft.C3)),
+        } };
+      });
+      await authService.importMahasiswaPKL(updates);
+
+      await refetchMhs();
+      setIsInlineEdit(false);
+      setNotification({
+        type: 'success',
+        message: 'Perubahan matriks keputusan berhasil disimpan dan perhitungan SMART telah diperbarui!',
+      });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
-
-    await refetchMhs();
-    setIsInlineEdit(false);
-    setNotification({
-      type: 'success',
-      message: 'Perubahan matriks keputusan berhasil disimpan dan perhitungan SMART telah diperbarui!',
-    });
-    setTimeout(() => setNotification(null), 3000);
   };
 
   // Real-time calculation preview inside modal
@@ -381,6 +371,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
       {/* Header with Prominent Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -395,11 +386,11 @@ export const AdminPerhitunganSMART: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={handleResetDefaults}
-            title="Reset data ke 5 mahasiswa benchmark awal"
+            title="Kosongkan nilai penilaian"
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Data Awal</span>
+            <span>Kosongkan Nilai</span>
           </button>
 
           <button

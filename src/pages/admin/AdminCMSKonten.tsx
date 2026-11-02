@@ -6,10 +6,10 @@ import { SiteSettings, HeroSection } from '../../types';
 import { Skeleton } from '../../components/common/Skeleton';
 
 export const AdminCMSKonten: React.FC = () => {
-  const { data: settings, loading: loadingSet, refetch: refetchSet } = useQuery(() =>
+  const { error: settingsError, data: settings, loading: loadingSet, refetch: refetchSet } = useQuery(() =>
     contentService.getSiteSettings()
   );
-  const { data: hero, loading: loadingHero, refetch: refetchHero } = useQuery(() =>
+  const { error: heroError, data: hero, loading: loadingHero, refetch: refetchHero } = useQuery(() =>
     contentService.getHero()
   );
 
@@ -27,22 +27,32 @@ export const AdminCMSKonten: React.FC = () => {
   }, [hero, localHero]);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!localSettings) return;
-    await contentService.updateSiteSettings(localSettings);
-    setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 2500);
-    await refetchSet();
+    try {
+      e.preventDefault();
+      if (!localSettings) return;
+      await contentService.updateSiteSettings(localSettings);
+      setSavedNotice(true);
+      setTimeout(() => setSavedNotice(false), 2500);
+      await refetchSet();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan.');
+    }
   };
 
   const handleSaveHero = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!localHero) return;
-    await contentService.updateHero(localHero);
-    setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 2500);
-    await refetchHero();
+    try {
+      e.preventDefault();
+      if (!localHero) return;
+      await contentService.updateHero(localHero);
+      setSavedNotice(true);
+      setTimeout(() => setSavedNotice(false), 2500);
+      await refetchHero();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan.');
+    }
   };
+
+  if (settingsError || heroError) return <div role="alert" className="p-4 text-red-700">{settingsError || heroError}</div>;
 
   if (loadingSet || loadingHero || !localSettings || !localHero) {
     return (

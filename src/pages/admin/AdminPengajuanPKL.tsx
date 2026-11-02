@@ -14,11 +14,11 @@ import { Modal } from '../../components/common/Modal';
 import { Skeleton } from '../../components/common/Skeleton';
 
 export const AdminPengajuanPKL: React.FC = () => {
-  const { data: pengajuanList, loading, refetch } = useQuery(() =>
+  const { error: pengajuanError, data: pengajuanList, loading, refetch } = useQuery(() =>
     pengajuanService.getSemuaPengajuan()
   );
   const { data: alternatifList } = useQuery(() => spkService.getAlternatif());
-  const { data: mahasiswaList } = useQuery(() => authService.getMahasiswaPKLList());
+  const { error: mahasiswaError, data: mahasiswaList } = useQuery(() => authService.getMahasiswaPKLList());
 
   const [filterStatus, setFilterStatus] = useState<'semua' | StatusPengajuan>('semua');
   const [selectedPengajuan, setSelectedPengajuan] = useState<PengajuanPKL | null>(null);
@@ -38,17 +38,21 @@ export const AdminPengajuanPKL: React.FC = () => {
   };
 
   const handleConfirmAction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPengajuan) return;
+    try {
+      e.preventDefault();
+      if (!selectedPengajuan) return;
 
-    await pengajuanService.updateStatusPengajuan(
-      selectedPengajuan.id,
-      actionType,
-      catatan
-    );
+      await pengajuanService.updateStatusPengajuan(
+        selectedPengajuan.id,
+        actionType,
+        catatan
+      );
 
-    setIsModalOpen(false);
-    await refetch();
+      setIsModalOpen(false);
+      await refetch();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan.');
+    }
   };
 
   const filtered = (pengajuanList || []).filter((p) => {
@@ -58,6 +62,7 @@ export const AdminPengajuanPKL: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {(mahasiswaError || pengajuanError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || pengajuanError}</div>}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">

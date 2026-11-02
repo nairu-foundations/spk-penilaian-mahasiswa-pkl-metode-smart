@@ -7,7 +7,7 @@ import { Modal } from '../../components/common/Modal';
 import { Skeleton } from '../../components/common/Skeleton';
 
 export const AdminPeriode: React.FC = () => {
-  const { data: list, loading, refetch } = useQuery(() => spkService.getPeriode());
+  const { error, data: list, loading, refetch } = useQuery(() => spkService.getPeriode());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PeriodePKL | null>(null);
 
@@ -35,23 +35,28 @@ export const AdminPeriode: React.FC = () => {
   };
 
   const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formNama.trim() || !formMulai || !formSelesai) return;
+    try {
+      e.preventDefault();
+      if (!formNama.trim() || !formMulai || !formSelesai) return;
 
-    await spkService.savePeriode({
-      id: editingItem?.id || '',
-      nama_periode: formNama.trim(),
-      tanggal_mulai: formMulai,
-      tanggal_selesai: formSelesai,
-      status: formStatus,
-    });
+      await spkService.savePeriode({
+        id: editingItem?.id || '',
+        nama_periode: formNama.trim(),
+        tanggal_mulai: formMulai,
+        tanggal_selesai: formSelesai,
+        status: formStatus,
+      });
 
-    setIsModalOpen(false);
-    await refetch();
+      setIsModalOpen(false);
+      await refetch();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan.');
+    }
   };
 
   return (
     <div className="space-y-6">
+      {error && <p role="alert" className="text-red-700">{error}</p>}
       {/* Header matching Screen 4 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -7,7 +7,7 @@ import { Modal } from '../../components/common/Modal';
 import { Skeleton } from '../../components/common/Skeleton';
 
 export const AdminKriteria: React.FC = () => {
-  const { data: list, loading, refetch } = useQuery(() => spkService.getKriteria());
+  const { data: list, loading, error, refetch } = useQuery(() => spkService.getKriteria());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Kriteria | null>(null);
 
@@ -41,40 +41,53 @@ export const AdminKriteria: React.FC = () => {
   };
 
   const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formNama.trim() || !formKode.trim()) return;
+    try {
+      e.preventDefault();
+      if (!formNama.trim() || !formKode.trim()) return;
 
-    await spkService.saveKriteria({
-      id: editingItem?.id || '',
-      kode: formKode.trim().toUpperCase(),
-      nama: formNama.trim(),
-      tipe: formTipe,
-      bobot_awal: Number(formBobot),
-      deskripsi: formDeskripsi.trim(),
-      urutan: editingItem?.urutan || (list?.length || 0) + 1,
-      aktif: true,
-    });
+      await spkService.saveKriteria({
+        id: editingItem?.id || '',
+        kode: formKode.trim().toUpperCase(),
+        nama: formNama.trim(),
+        tipe: formTipe,
+        bobot_awal: Number(formBobot),
+        deskripsi: formDeskripsi.trim(),
+        urutan: editingItem?.urutan || (list?.length || 0) + 1,
+        aktif: true,
+      });
 
-    setIsModalOpen(false);
-    await refetch();
+      setIsModalOpen(false);
+      await refetch();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan kriteria.');
+    }
   };
 
   const handleResetDefault = async () => {
-    if (window.confirm('Reset kriteria ke 3 kriteria standar penilaian PKL (C1: Kehadiran 30%, C2: Ketepatan Waktu 20%, C3: Penyelesaian Tugas 50%)?')) {
-      localStorage.removeItem('spk_kriteria');
-      await refetch();
+    try {
+      if (window.confirm('Pulihkan C1: Kehadiran 30%, C2: Ketepatan Waktu 20%, C3: Penyelesaian Tugas 50% di database? Kriteria tambahan tetap dipertahankan.')) {
+        await spkService.resetKriteria();
+        await refetch();
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal memulihkan kriteria.');
     }
   };
 
   const handleDelete = async (id: string, nama: string) => {
-    if (window.confirm(`Hapus kriteria "${nama}"?`)) {
-      await spkService.deleteKriteria(id);
-      await refetch();
+    try {
+      if (window.confirm(`Hapus kriteria "${nama}"?`)) {
+        await spkService.deleteKriteria(id);
+        await refetch();
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan kriteria.');
     }
   };
 
   return (
     <div className="space-y-6">
+      {error && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{error}</div>}
       {/* Header matching Screen 5 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

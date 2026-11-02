@@ -65,6 +65,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
         </button>
       </div>
 
+      <NavLink to="/admin/cms" className={navItemClass} onClick={onClose}><Database className="w-5 h-5" /><span>Konten Website</span></NavLink>
+
       {/* Role Badge Indicator - No easy bypass switcher, strict account identity */}
       <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2.5">

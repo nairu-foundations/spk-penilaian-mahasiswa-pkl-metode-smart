@@ -8,10 +8,10 @@ import { Skeleton } from '../../components/common/Skeleton';
 import { MahasiswaPKL } from '../../types';
 
 export const AdminInputPenilaian: React.FC = () => {
-  const { data: mahasiswaList, loading: loadingMhs, refetch: refetchMhs } = useQuery(() =>
+  const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs, refetch: refetchMhs } = useQuery(() =>
     authService.getMahasiswaPKLList()
   );
-  const { data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
+  const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
   const [search, setSearch] = useState('');
   const [selectedPeriode, setSelectedPeriode] = useState('Periode 1 - 2025');
@@ -35,24 +35,7 @@ export const AdminInputPenilaian: React.FC = () => {
     if (mhs.nilai_kriteria && mhs.nilai_kriteria[kodeKriteria] !== undefined) {
       return mhs.nilai_kriteria[kodeKriteria];
     }
-    // Benchmark default
-    const kode = mhs.kode_alternatif || '';
-    if (kode === 'A1' || mhs.nama.includes('Andi')) {
-      return kodeKriteria === 'C1' ? 95 : kodeKriteria === 'C2' ? 90 : 92;
-    }
-    if (kode === 'A2' || mhs.nama.includes('Rina')) {
-      return kodeKriteria === 'C1' ? 95 : kodeKriteria === 'C2' ? 90 : 85;
-    }
-    if (kode === 'A3' || mhs.nama.includes('Siti')) {
-      return kodeKriteria === 'C1' ? 90 : kodeKriteria === 'C2' ? 95 : 85;
-    }
-    if (kode === 'A4' || mhs.nama.includes('Budi')) {
-      return kodeKriteria === 'C1' ? 80 : kodeKriteria === 'C2' ? 85 : 75;
-    }
-    if (kode === 'A5' || mhs.nama.includes('Dika')) {
-      return kodeKriteria === 'C1' ? 75 : kodeKriteria === 'C2' ? 80 : 70;
-    }
-    return 80;
+    return 0;
   };
 
   const handleScoreChange = (mhsId: string, kodeKriteria: string, value: number) => {
@@ -68,119 +51,76 @@ export const AdminInputPenilaian: React.FC = () => {
 
   // Save single student assessment
   const handleSaveStudent = async (mhs: MahasiswaPKL) => {
-    if (!kriteriaList) return;
+    try {
+      if (!kriteriaList) return;
 
-    const scores: Record<string, number> = {};
-    activeKriteria.forEach((k) => {
-      scores[k.kode] = getScore(mhs, k.kode);
-    });
-
-    const updatedMhs: MahasiswaPKL = {
-      ...mhs,
-      nilai_kriteria: scores,
-    };
-
-    // Recalculate SMART scores for this student
-    const smartCalc = jalankanSMARTMahasiswa({
-      mahasiswaList: [updatedMhs],
-      kriteriaList,
-    });
-    const resultItem = smartCalc.matriksKeputusan[0];
-    if (resultItem) {
-      updatedMhs.utility = resultItem.utilitas;
-      updatedMhs.skor_akhir_smart = resultItem.skor_akhir;
-      updatedMhs.nilai_skala_100 = resultItem.nilai_skala_100;
-      updatedMhs.keterangan_nilai = resultItem.keterangan;
-    }
-
-    await authService.saveMahasiswaPKL(updatedMhs);
-    setSavedSuccessId(mhs.id);
-    setTimeout(() => setSavedSuccessId(null), 2500);
-    await refetchMhs();
-  };
-
-  // Save all students assessments at once
-  const handleSaveAll = async () => {
-    if (!mahasiswaList || !kriteriaList) return;
-
-    for (const mhs of mahasiswaList) {
       const scores: Record<string, number> = {};
       activeKriteria.forEach((k) => {
         scores[k.kode] = getScore(mhs, k.kode);
       });
+
       const updatedMhs: MahasiswaPKL = {
         ...mhs,
         nilai_kriteria: scores,
       };
-      await authService.saveMahasiswaPKL(updatedMhs);
-    }
 
-    // Run batch SMART ranking update
-    const freshList = await authService.getMahasiswaPKLList();
-    const batchSMART = jalankanSMARTMahasiswa({
-      mahasiswaList: freshList,
-      kriteriaList,
-    });
-
-    for (const rankItem of batchSMART.ranking) {
-      const target = freshList.find((m) => m.id === rankItem.id);
-      if (target) {
-        await authService.saveMahasiswaPKL({
-          ...target,
-          nilai_kriteria: rankItem.nilai_mentah,
-          utility: rankItem.utilitas,
-          skor_akhir_smart: rankItem.skor_akhir,
-          nilai_skala_100: rankItem.nilai_skala_100,
-          peringkat: rankItem.peringkat,
-          keterangan_nilai: rankItem.keterangan,
-        });
+      // Recalculate SMART scores for this student
+      const smartCalc = jalankanSMARTMahasiswa({
+        mahasiswaList: [updatedMhs],
+        kriteriaList,
+      });
+      const resultItem = smartCalc.matriksKeputusan[0];
+      if (resultItem) {
+        updatedMhs.utility = resultItem.utilitas;
+        updatedMhs.skor_akhir_smart = resultItem.skor_akhir;
+        updatedMhs.nilai_skala_100 = resultItem.nilai_skala_100;
+        updatedMhs.keterangan_nilai = resultItem.keterangan;
       }
-    }
 
-    setSaveAllSuccess(true);
-    setTimeout(() => setSaveAllSuccess(false), 3000);
-    await refetchMhs();
+      await authService.saveMahasiswaPKL(updatedMhs);
+      setLocalScores(prev => { const next = {...prev}; delete next[mhs.id]; return next; });
+      setSavedSuccessId(mhs.id);
+      setTimeout(() => setSavedSuccessId(null), 2500);
+      await refetchMhs();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
+    }
+  };
+
+  // Save all students assessments at once
+  const handleSaveAll = async () => {
+    try {
+      if (!mahasiswaList || !kriteriaList) return;
+
+      const updates = mahasiswaList.map((mhs) => {
+        const scores = Object.fromEntries(activeKriteria.map((k) => [k.kode, getScore(mhs, k.kode)]));
+        return { ...mhs, nilai_kriteria: scores };
+      });
+      await authService.importMahasiswaPKL(updates);
+
+      setLocalScores({});
+      setSaveAllSuccess(true);
+      setTimeout(() => setSaveAllSuccess(false), 3000);
+      await refetchMhs();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
+    }
   };
 
   // Reset to benchmark case study (A1 - A5)
   const handleResetBenchmark = async () => {
-    if (!window.confirm('Reset seluruh nilai matriks penilaian mahasiswa ke nilai benchmark resmi (A1 s.d. A5)?')) {
-      return;
+    try {
+      if (!window.confirm('Kosongkan seluruh nilai penilaian pada database? Identitas mahasiswa tetap dipertahankan.')) return;
+      await authService.resetMahasiswaPKLList();
+
+      setLocalScores({});
+      setLocalScores({});
+      setSaveAllSuccess(true);
+      setTimeout(() => setSaveAllSuccess(false), 2500);
+      await refetchMhs();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
-
-    const benchmarkMap: Record<string, { c1: number; c2: number; c3: number; rank: number; skor: number; ket: 'Sangat Baik' | 'Baik' | 'Cukup' }> = {
-      'andi.pratama@mail.ugm.ac.id': { c1: 95, c2: 90, c3: 92, rank: 1, skor: 0.9250, ket: 'Sangat Baik' },
-      'rina.anggraini@student.uny.ac.id': { c1: 95, c2: 90, c3: 85, rank: 2, skor: 0.8900, ket: 'Baik' },
-      'siti.nurhaliza@upnyk.ac.id': { c1: 90, c2: 95, c3: 85, rank: 3, skor: 0.8850, ket: 'Baik' },
-      'budi.santoso@students.uii.ac.id': { c1: 80, c2: 85, c3: 75, rank: 4, skor: 0.7850, ket: 'Cukup' },
-      'dika.pratama@ity.ac.id': { c1: 75, c2: 80, c3: 70, rank: 5, skor: 0.7350, ket: 'Cukup' },
-      '20241001': { c1: 95, c2: 90, c3: 92, rank: 1, skor: 0.9250, ket: 'Sangat Baik' },
-      '20241004': { c1: 95, c2: 90, c3: 85, rank: 2, skor: 0.8900, ket: 'Baik' },
-      '20241002': { c1: 90, c2: 95, c3: 85, rank: 3, skor: 0.8850, ket: 'Baik' },
-      '20241003': { c1: 80, c2: 85, c3: 75, rank: 4, skor: 0.7850, ket: 'Cukup' },
-      '20241005': { c1: 75, c2: 80, c3: 70, rank: 5, skor: 0.7350, ket: 'Cukup' },
-    };
-
-    const currentList = mahasiswaList || [];
-    for (const mhs of currentList) {
-      const bench = benchmarkMap[mhs.email] || benchmarkMap[mhs.nim];
-      if (bench) {
-        await authService.saveMahasiswaPKL({
-          ...mhs,
-          nilai_kriteria: { C1: bench.c1, C2: bench.c2, C3: bench.c3 },
-          utility: { C1: bench.c1 / 100, C2: bench.c2 / 100, C3: bench.c3 / 100 },
-          skor_akhir_smart: bench.skor,
-          nilai_skala_100: bench.skor * 100,
-          peringkat: bench.rank,
-          keterangan_nilai: bench.ket,
-        });
-      }
-    }
-
-    setLocalScores({});
-    setSaveAllSuccess(true);
-    setTimeout(() => setSaveAllSuccess(false), 2500);
-    await refetchMhs();
   };
 
   const filteredMahasiswa = (mahasiswaList || []).filter(
@@ -192,6 +132,7 @@ export const AdminInputPenilaian: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
       {/* Header matching Mockup Screen 6 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -218,7 +159,7 @@ export const AdminInputPenilaian: React.FC = () => {
             title="Kembalikan ke Nilai Kasus Uji Kasus A1-A5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Benchmark A1-A5</span>
+            <span>Kosongkan Nilai</span>
           </button>
 
           <button
