@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Search,
   Plus,
@@ -23,6 +23,8 @@ export const AdminMahasiswa: React.FC = () => {
   const { error: mahasiswaError, data: list, loading, refetch } = useQuery(() => authService.getMahasiswaPKLList());
   const [search, setSearch] = useState('');
   const [filterBagian, setFilterBagian] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MahasiswaPKL | null>(null);
   const [migrating, setMigrating] = useState(false);
@@ -174,12 +176,21 @@ export const AdminMahasiswa: React.FC = () => {
     const matchSearch =
       m.nama.toLowerCase().includes(search.toLowerCase()) ||
       m.email.toLowerCase().includes(search.toLowerCase()) ||
+      (m.nim || '').toLowerCase().includes(search.toLowerCase()) ||
       m.bagian.toLowerCase().includes(search.toLowerCase()) ||
       (m.institusi && m.institusi.toLowerCase().includes(search.toLowerCase()));
 
     const matchBagian = filterBagian === 'all' || m.bagian.includes(filterBagian);
     return matchSearch && matchBagian;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex = (activePage - 1) * pageSize;
+  const visibleStudents = filteredList.slice(startIndex, startIndex + pageSize);
+  const firstPageNumber = Math.max(1, Math.min(activePage - 2, totalPages - 4));
+  const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, index) => firstPageNumber + index);
+  useEffect(() => { setCurrentPage(page => Math.min(page, totalPages)); }, [totalPages]);
 
   return (
     <div className="space-y-6">
@@ -256,7 +267,7 @@ export const AdminMahasiswa: React.FC = () => {
             type="text"
             placeholder="Cari nama, NIM, universitas, atau divisi..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
             className="w-full pl-10 pr-4 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -265,7 +276,7 @@ export const AdminMahasiswa: React.FC = () => {
           <div className="relative">
             <select
               value={filterBagian}
-              onChange={(e) => setFilterBagian(e.target.value)}
+              onChange={(e) => { setFilterBagian(e.target.value); setCurrentPage(1); }}
               className="appearance-none pl-9 pr-8 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Semua Bagian / Divisi</option>
@@ -308,13 +319,13 @@ export const AdminMahasiswa: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredList.map((mhs, idx) => (
+                {visibleStudents.map((mhs, idx) => (
                   <tr
                     key={mhs.id}
                     className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
                   >
                     <td className="py-3 px-4 text-center text-slate-500 tabular-nums">
-                      {idx + 1}
+                      {startIndex + idx + 1}
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">
                       {mhs.nama}
@@ -338,7 +349,7 @@ export const AdminMahasiswa: React.FC = () => {
                             {mhs.skor_akhir_smart.toFixed(2)}
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            Rank #{mhs.peringkat || idx + 1}
+                            Rank #{mhs.peringkat || startIndex + idx + 1}
                           </span>
                         </div>
                       ) : (
@@ -372,26 +383,19 @@ export const AdminMahasiswa: React.FC = () => {
 
         {/* Footer / Pagination matching Screen 3 */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <span>
-            Menampilkan 1-{filteredList.length} dari {filteredList.length} data mahasiswa PKL
+          <span role="status">
+            {loading ? 'Memuat data mahasiswa...' : `Menampilkan ${filteredList.length ? startIndex + 1 : 0}–${Math.min(startIndex + pageSize, filteredList.length)} dari ${filteredList.length} data mahasiswa PKL`}
           </span>
-          <div className="flex items-center gap-1">
-            <button className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 disabled:opacity-50">
+          <nav aria-label="Halaman data mahasiswa" className="flex flex-wrap items-center justify-center gap-1">
+            <button type="button" aria-label="Halaman sebelumnya" disabled={loading || activePage === 1} onClick={() => setCurrentPage(activePage - 1)} className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">
               &lt;
             </button>
-            <button className="px-2.5 py-1 rounded bg-blue-600 text-white font-medium">
-              1
-            </button>
-            <button className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100">
-              2
-            </button>
-            <button className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100">
-              3
-            </button>
-            <button className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100">
+            {pageNumbers.map(page => <button key={page} type="button" disabled={loading} aria-label={`Halaman ${page}`} aria-current={page === activePage ? 'page' : undefined} onClick={() => setCurrentPage(page)} className={`px-2.5 py-1 rounded font-medium disabled:opacity-50 ${page === activePage ? 'bg-blue-600 text-white' : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100'}`}>{page}</button>)}
+            <button type="button" aria-label="Halaman berikutnya" disabled={loading || activePage === totalPages} onClick={() => setCurrentPage(activePage + 1)} className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">
               &gt;
             </button>
-          </div>
+            <span className="ml-2">{activePage} / {totalPages}</span>
+          </nav>
         </div>
       </div>
 
