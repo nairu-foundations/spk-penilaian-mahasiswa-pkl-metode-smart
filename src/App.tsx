@@ -21,7 +21,6 @@ import { AdminHasilPeringkat } from './pages/admin/AdminHasilPeringkat';
 import { AdminPengajuanPKL } from './pages/admin/AdminPengajuanPKL';
 import { AdminPengguna } from './pages/admin/AdminPengguna';
 import { AdminPengaturanAkun } from './pages/admin/AdminPengaturanAkun';
-import { AdminCMSKonten } from './pages/admin/AdminCMSKonten';
 import { AdminAuditLog } from './pages/admin/AdminAuditLog';
 
 export default function App() {
@@ -67,7 +66,7 @@ export default function App() {
             <Route path="hasil-peringkat" element={<AdminHasilPeringkat />} />
             <Route path="pengajuan" element={<AdminPengajuanPKL />} />
             <Route path="pengguna" element={<AdminPengguna />} />
-            <Route path="cms" element={<AdminCMSKonten />} />
+            <Route path="cms" element={<Navigate to="/admin" replace />} />
             <Route path="pengaturan" element={<AdminPengaturanAkun />} />
 
             {/* Exclusive Founder Route: HRD is blocked */}

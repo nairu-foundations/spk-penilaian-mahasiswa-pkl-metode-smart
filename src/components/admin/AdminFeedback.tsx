@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowRight, Check, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { lockBodyScroll } from '../../lib/scrollLock';
 
 export const AdminFeedback: React.FC = () => {
   const [notice, setNotice] = useState<{ id: number; message: string } | null>(null);
@@ -11,8 +12,7 @@ export const AdminFeedback: React.FC = () => {
   useEffect(() => {
     if (!open) return;
     const previousFocus = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlock = lockBodyScroll();
     closeButton.current?.focus();
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -23,7 +23,7 @@ export const AdminFeedback: React.FC = () => {
     window.addEventListener('keydown', handleKey, true);
     return () => {
       window.removeEventListener('keydown', handleKey, true);
-      document.body.style.overflow = previousOverflow;
+      unlock();
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
     };
   }, [open]);

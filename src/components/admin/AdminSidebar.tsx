@@ -17,7 +17,6 @@ import {
   Lock,
   Building2,
   ShieldAlert,
-  Database,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -64,8 +63,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
           <X className="w-5 h-5" />
         </button>
       </div>
-
-      <NavLink to="/admin/cms" className={navItemClass} onClick={onClose}><Database className="w-5 h-5" /><span>Konten Website</span></NavLink>
 
       {/* Role Badge Indicator - No easy bypass switcher, strict account identity */}
       <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
@@ -193,7 +190,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
           </p>
           <div className="px-3 py-2.5 bg-slate-800/60 rounded-xl border border-slate-700/60 space-y-2">
             <p className="text-[11px] text-slate-400">
-              Unduh rekapitulasi nilai &amp; database:
+              Unduh rekapitulasi nilai:
             </p>
             <div className="flex gap-2">
               <a
@@ -211,14 +208,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
                 <FileDown className="w-3.5 h-3.5" /> JSON
               </a>
             </div>
-            <a
-              href="/data/database_spk_seveninc.sql"
-              download="database_spk_seveninc.sql"
-              className="w-full py-1.5 px-2 bg-blue-600/80 hover:bg-blue-600 border border-blue-500/40 rounded text-center text-[11px] font-bold text-white transition-colors flex items-center justify-center gap-1.5 shadow-xs"
-              title="Unduh File Database PostgreSQL Lengkap (.sql)"
-            >
-              <Database className="w-3.5 h-3.5" /> Database PostgreSQL (.sql)
-            </a>
           </div>
         </div>
 
