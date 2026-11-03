@@ -1,3 +1,4 @@
+import { CloudDownload } from '../common/CloudDownload';
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
@@ -193,20 +194,18 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
               Unduh rekapitulasi nilai:
             </p>
             <div className="flex gap-2">
-              <a
-                href="/data/mahasiswa_pkl.csv"
-                download="data_mahasiswa_pkl_seveninc.csv"
+              <CloudDownload
+                format="csv"
                 className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 rounded text-center text-[11px] font-bold text-white transition-colors flex items-center justify-center gap-1"
               >
                 <FileDown className="w-3.5 h-3.5" /> CSV
-              </a>
-              <a
-                href="/data/mahasiswa_pkl.json"
-                download="data_mahasiswa_pkl_seveninc.json"
+              </CloudDownload>
+              <CloudDownload
+                format="json"
                 className="flex-1 py-1.5 px-2 bg-slate-700 hover:bg-slate-650 border border-slate-600 rounded text-center text-[11px] font-bold text-slate-200 transition-colors flex items-center justify-center gap-1"
               >
                 <FileDown className="w-3.5 h-3.5" /> JSON
-              </a>
+              </CloudDownload>
             </div>
           </div>
         </div>

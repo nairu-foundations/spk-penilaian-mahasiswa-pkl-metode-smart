@@ -1,6 +1,7 @@
 import { MahasiswaPKL } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { notifyMutation } from '../lib/mutationFeedback';
+import { nilaiDariRekap } from '../utils/penilaianBulanan';
 
 const requireDatabase = () => {
   if (!isSupabaseConfigured || !supabase) {
@@ -25,8 +26,9 @@ export const mahasiswaService = {
     const current = await this.list();
     const emails = new Set<string>();
     const ids = new Set<string>();
-    const codes = new Set(current.map((m) => m.kode_alternatif));
-    let nextCode = Math.max(0, ...current.map((m) => Number(m.kode_alternatif?.match(/^A(\d+)$/)?.[1] ?? 0))) + 1;
+    const retained = replace ? current.filter(row => input.some(item => item.id === row.id || item.email.trim().toLowerCase() === row.email.toLowerCase())) : current;
+    const codes = new Set(retained.map((m) => m.kode_alternatif));
+    let nextCode = Math.max(0, ...retained.map((m) => Number(m.kode_alternatif?.match(/^A(\d+)$/)?.[1] ?? 0))) + 1;
     const rows = input.map((item) => {
       const email = item.email.trim().toLowerCase();
       if (!email || !item.nama.trim() || emails.has(email)) {
@@ -41,7 +43,10 @@ export const mahasiswaService = {
       let code = existing?.kode_alternatif ?? item.kode_alternatif;
       if (!code || (!existing && codes.has(code))) code = `A${nextCode++}`;
       codes.add(code);
-      const scores = merged.nilai_kriteria ?? {};
+      const scores = merged.rekap_bulanan ? nilaiDariRekap(merged.rekap_bulanan) : merged.nilai_kriteria ?? {};
+      if (merged.rekap_bulanan && item.nilai_kriteria && Object.entries(scores).some(([code, value]) => Math.abs((item.nilai_kriteria?.[code] ?? value) - value) > 0.0001)) {
+        throw new Error('Nilai mahasiswa ini berasal dari rekap bulanan. Gunakan Ubah Rekap pada Input Penilaian untuk memperbarui jumlah hari atau tugas.');
+      }
       if (Object.values(scores).some((v) => !Number.isFinite(v) || v < 0 || v > 100)) {
         throw new Error(`Nilai ${item.nama} harus berupa angka antara 0 dan 100.`);
       }
@@ -58,6 +63,7 @@ export const mahasiswaService = {
         peringkat: merged.peringkat ?? 0, keterangan_nilai: merged.keterangan_nilai ?? 'Cukup',
         pembimbing_industri: merged.pembimbing_industri ?? '',
         catatan_evaluasi: merged.catatan_evaluasi ?? '',
+        rekap_bulanan: merged.rekap_bulanan ?? null,
       };
     });
     const { data, error } = await client.rpc('save_mahasiswa_pkl_batch', {

@@ -1,3 +1,4 @@
+import { CloudDownload } from './CloudDownload';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { GraduationCap, Mail, Phone, MapPin } from 'lucide-react';
@@ -54,14 +55,14 @@ export const Footer: React.FC<FooterProps> = ({ settings }) => {
                 </Link>
               </li>
               <li>
-                <a href="/data/mahasiswa_pkl.csv" download="data_mahasiswa_pkl.csv" className="hover:text-white transition-colors">
+                <CloudDownload format="csv" className="hover:text-white transition-colors">
                   Unduh Berkas CSV Mahasiswa
-                </a>
+                </CloudDownload>
               </li>
               <li>
-                <a href="/data/mahasiswa_pkl.json" download="data_mahasiswa_pkl.json" className="hover:text-white transition-colors">
+                <CloudDownload format="json" className="hover:text-white transition-colors">
                   Unduh Berkas JSON Mahasiswa
-                </a>
+                </CloudDownload>
               </li>
             </ul>
           </div>

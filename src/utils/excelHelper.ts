@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { MahasiswaPKL, PeriodePKL } from '../types';
 import { SMARTMahasiswaResultItem } from './smart';
+import { isDailyWorkbook, mahasiswaDariWorkbookHarian } from './dailyWorkbook';
 
 export interface ExcelImportRow {
   kode_alternatif?: string;
@@ -29,78 +30,7 @@ export function unduhTemplateExcelSMART(): void {
     'Penyelesaian Tugas C3 (Bobot 50%)',
   ];
 
-  const sampleData = [
-    [
-      'A1',
-      'Andi Pratama',
-      'andi.pratama@mail.ugm.ac.id',
-      'Universitas Gadjah Mada',
-      'IT / Software Engineering',
-      95,
-      90,
-      92,
-    ],
-    [
-      'A2',
-      'Rina Anggraini',
-      'rina.anggraini@student.uny.ac.id',
-      'Universitas Negeri Yogyakarta',
-      'HRD & Talent Development',
-      95,
-      90,
-      85,
-    ],
-    [
-      'A3',
-      'Siti Nurhaliza',
-      'siti.nurhaliza@upnyk.ac.id',
-      'Universitas Pembangunan Nasional',
-      'Marketing & PR',
-      90,
-      95,
-      85,
-    ],
-    [
-      'A4',
-      'Budi Santoso',
-      'budi.santoso@students.uii.ac.id',
-      'Universitas Islam Indonesia',
-      'Accounting & Finance',
-      80,
-      85,
-      75,
-    ],
-    [
-      'A5',
-      'Dika Pratama',
-      'dika.pratama@ity.ac.id',
-      'Institut Teknologi Yogyakarta',
-      'IT / Infrastructure',
-      75,
-      80,
-      70,
-    ],
-    [
-      'A6',
-      'Maya Safitri',
-      'maya.safitri@mail.ugm.ac.id',
-      'Universitas Gadjah Mada',
-      'UI/UX & Creative Media',
-      88,
-      92,
-      86,
-    ],
-    [
-      'A7',
-      'Fajar Nugroho',
-      'fajar.nugroho@student.uny.ac.id',
-      'Universitas Negeri Yogyakarta',
-      'Digital Marketing',
-      82,
-      88,
-      90,
-    ],
-  ];
+  const sampleData = [['A1', '', '', '', '', 0, 0, 0]];
 
   // Petunjuk pengisian sheet terpisah
   const petunjukData = [
@@ -110,7 +40,7 @@ export function unduhTemplateExcelSMART(): void {
     ['2. Email Mahasiswa berfungsi sebagai identitas kunci unik setiap mahasiswa.'],
     ['3. Nilai kriteria diisi dengan angka pada rentang skala 0 s.d. 100.'],
     ['4. Kriteria C1 (Kehadiran): Bobot 30% (Semakin tinggi kehadiran, nilai mendekati 100).'],
-    ['5. Kriteria C2 (Ketepatan Waktu): Bobot 20% (Kedisiplinan jam masuk kerja PT Seven Inc.).'],
+    ['5. Kriteria C2 (Ketepatan Waktu): Bobot 20% (Hari tepat waktu / hari hadir x 100; batas masuk 08.00.).'],
     ['6. Kriteria C3 (Penyelesaian Tugas): Bobot 50% (Performa dan mutu penuntasan proyek kerja).'],
     ['7. File yang disimpan dapat langsung diunggah ke tampilan Perhitungan SMART untuk diotomatisasi.'],
   ];
@@ -145,6 +75,7 @@ export function unduhTemplateExcelSMART(): void {
 export async function bacaFileExcelMahasiswa(file: File, defaultPeriod: PeriodePKL, periods: PeriodePKL[] = [defaultPeriod]): Promise<MahasiswaPKL[]> {
   const data = await file.arrayBuffer();
   const workbook = XLSX.read(data, { type: 'array' });
+  if (isDailyWorkbook(workbook)) return mahasiswaDariWorkbookHarian(workbook, defaultPeriod, 'hari_hadir', file.name);
 
   // Ambil sheet pertama
   const sheetName = workbook.SheetNames[0];

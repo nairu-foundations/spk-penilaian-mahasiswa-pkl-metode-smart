@@ -1,6 +1,6 @@
-Kode Alternatif,Email Mahasiswa,Nama Mahasiswa,Institusi / Kampus,Bagian / Divisi,Periode,Status,Kehadiran (C1),Ketepatan Waktu (C2),Penyelesaian Tugas (C3),Nilai Akhir SMART,Nilai Skala 0-100,Peringkat,Keterangan
-A1,andi.pratama@mail.ugm.ac.id,Andi Pratama,Universitas Gadjah Mada,IT / Software Engineering,Periode 1 - 2025,Aktif,95,90,92,0.9250,92.50,1,Sangat Baik
-A2,rina.anggraini@student.uny.ac.id,Rina Anggraini,Universitas Negeri Yogyakarta,HRD & Talent Development,Periode 1 - 2025,Aktif,95,90,85,0.8900,89.00,2,Baik
-A3,siti.nurhaliza@upnyk.ac.id,Siti Nurhaliza,Universitas Pembangunan Nasional,Marketing & PR,Periode 1 - 2025,Aktif,90,95,85,0.8850,88.50,3,Baik
-A4,budi.santoso@students.uii.ac.id,Budi Santoso,Universitas Islam Indonesia,Accounting & Finance,Periode 1 - 2025,Aktif,80,85,75,0.7850,78.50,4,Cukup
-A5,dika.pratama@ity.ac.id,Dika Pratama,Institut Teknologi Yogyakarta,IT / Infrastructure,Periode 1 - 2025,Aktif,75,80,70,0.7350,73.50,5,Cukup
+﻿"Kode","Nama","Email","Periode","Tanggal Mulai","Tanggal Selesai","Hari Hadir","Hari Kerja","Hari Tepat Waktu","Tugas Selesai","Target Tugas","C1","C2","C3","Skor SMART","Skala 100","Peringkat"
+"A1","Moh. Farhan Assidiqi","mohfarhansidiq18@gmail.com","Periode 1 - 2026","","","","","","","","90","88.8889","100","0.9478","94.78","3"
+"A2","Febrian Maulana","febrianmaulana24@gmail.com","Periode 1 - 2026","","","","","","","","95","89.4737","100","0.9639","96.39","1"
+"A3","Rafael Theo Santoso","rafaelsantoso00@gmail.com","Periode 1 - 2026","","","","","","","","90","94.4444","100","0.9589","95.89","2"
+"A4","Rico Adicahyo Nirwikoro","ricoacahyo12@gmail.com","Periode 1 - 2026","","","","","","","","80","81.25","75","0.7775","77.75","4"
+"A5","Riski Ardianto","riskiardianto779@gmail.com","Periode 1 - 2026","","","","","","","","75","73.3333","50","0.6217","62.17","5"

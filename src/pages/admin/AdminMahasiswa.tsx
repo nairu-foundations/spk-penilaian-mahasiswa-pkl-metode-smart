@@ -1,3 +1,4 @@
+import { unduhMahasiswa } from '../../utils/mahasiswaExport';
 import React, { useEffect, useState } from 'react';
 import {
   Search,
@@ -10,6 +11,7 @@ import {
   FileCode,
   Printer,
   Crown,
+  ClipboardList,
 } from 'lucide-react';
 import { useQuery } from '../../hooks/useData';
 import { authService } from '../../services/authService';
@@ -18,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
 import { Skeleton } from '../../components/common/Skeleton';
 import { usePeriode } from '../../hooks/usePeriode';
+import { MonthlyAssessmentModal } from '../../components/admin/MonthlyAssessmentModal';
 
 export const AdminMahasiswa: React.FC = () => {
   const { isSuperAdmin } = useAuth();
@@ -26,6 +29,7 @@ export const AdminMahasiswa: React.FC = () => {
   const [filterBagian, setFilterBagian] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+  const [recapStudent, setRecapStudent] = useState<MahasiswaPKL | null>(null);
   const { periodeList, periodeAktif, error: periodeError } = usePeriode();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MahasiswaPKL | null>(null);
@@ -94,13 +98,13 @@ export const AdminMahasiswa: React.FC = () => {
         id: editingItem?.id || `mhs-${Date.now()}`,
         nama: formNama.trim(),
         email: formEmail.trim(),
-        nim: formNim.trim() || editingItem?.nim || `2024${Math.floor(1000 + Math.random() * 9000)}`,
-        institusi: formInstitusi.trim() || 'Universitas Mitra',
+        nim: formNim.trim(),
+        institusi: formInstitusi.trim(),
         bagian: formBagian,
         periode: formPeriode,
-        tanggal_mulai: period.tanggal_mulai,
-        tanggal_selesai: period.tanggal_selesai,
-        no_hp: formNoHp.trim() || '0812-3456-7890',
+        tanggal_mulai: editingItem?.periode === formPeriode ? editingItem.tanggal_mulai : period.tanggal_mulai,
+        tanggal_selesai: editingItem?.periode === formPeriode ? editingItem.tanggal_selesai : period.tanggal_selesai,
+        no_hp: formNoHp.trim(),
         status: formStatus,
         skor_akhir_smart: editingItem?.skor_akhir_smart,
         peringkat: editingItem?.peringkat,
@@ -125,56 +129,8 @@ export const AdminMahasiswa: React.FC = () => {
     }
   };
 
-  // Download CSV
-  const handleDownloadCSV = () => {
-    const dataToExport = list || [];
-    if (dataToExport.length === 0) return;
-    const headers = [
-      'No',
-      'Email Mahasiswa',
-      'Nama Mahasiswa',
-      'Institusi Kampus',
-      'Bagian Divisi',
-      'Periode',
-      'Status',
-      'Skor SMART',
-      'Peringkat',
-      'Keterangan',
-    ].join(',');
-
-    const rows = dataToExport.map((m, idx) =>
-      [
-        idx + 1,
-        `"${m.email || m.nim}"`,
-        `"${m.nama}"`,
-        `"${m.institusi}"`,
-        `"${m.bagian}"`,
-        `"${m.periode}"`,
-        `"${m.status}"`,
-        m.skor_akhir_smart || '-',
-        m.peringkat || '-',
-        `"${m.keterangan_nilai || '-'}"`,
-      ].join(',')
-    );
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].join('\n');
-    const encoded = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.href = encoded;
-    link.download = 'data_mahasiswa_pkl_seveninc.csv';
-    link.click();
-  };
-
-  // Download JSON
-  const handleDownloadJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(list || [], null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', 'data_mahasiswa_pkl_seveninc.json');
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
+  const handleDownloadCSV = () => unduhMahasiswa(list ?? [], 'csv');
+  const handleDownloadJSON = () => unduhMahasiswa(list ?? [], 'json');
 
   const filteredList = (list || []).filter((m) => {
     const matchSearch =
@@ -316,8 +272,9 @@ export const AdminMahasiswa: React.FC = () => {
                   <th className="py-3 px-4 w-12 text-center">No</th>
                   <th className="py-3 px-4">Nama Mahasiswa</th>
                   <th className="py-3 px-4">Email Mahasiswa</th>
-                  <th className="py-3 px-4">Bagian / Divisi</th>
-                  <th className="py-3 px-4">Institusi Asal</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Hari Hadir</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Tepat Waktu</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Tugas Selesai</th>
                   <th className="py-3 px-4">Periode</th>
                   <th className="py-3 px-4 text-center">Skor SMART</th>
                   <th className="py-3 px-4 text-center w-24">Aksi</th>
@@ -338,20 +295,24 @@ export const AdminMahasiswa: React.FC = () => {
                     <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono text-xs">
                       {mhs.email}
                     </td>
-                    <td className="py-3 px-4 text-slate-700 dark:text-slate-200 font-medium">
-                      {mhs.bagian}
+                    <td className="py-3 px-4 text-center text-xs tabular-nums">
+                      {mhs.rekap_bulanan ? `${mhs.rekap_bulanan.hari_hadir}/${mhs.rekap_bulanan.hari_kerja} hari` : '—'}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 text-xs">
-                      {mhs.institusi || 'Kampus Mitra'}
+                    <td className="py-3 px-4 text-center text-xs tabular-nums">
+                      {mhs.rekap_bulanan ? `${mhs.rekap_bulanan.hari_tepat_waktu}/${mhs.rekap_bulanan.hari_hadir} hadir` : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-center text-xs tabular-nums font-semibold">
+                      {mhs.rekap_bulanan ? `${mhs.rekap_bulanan.tugas_selesai}/4 tugas` : '—'}
                     </td>
                     <td className="py-3 px-4 text-slate-500 text-xs">
                       {mhs.periode || 'Belum dipilih'}
+                      <span className="block text-[10px] text-slate-400 whitespace-nowrap">{mhs.tanggal_mulai} – {mhs.tanggal_selesai}</span>
                     </td>
                     <td className="py-3 px-4 text-center">
                       {mhs.skor_akhir_smart ? (
                         <div className="inline-flex flex-col items-center">
                           <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-xs tabular-nums">
-                            {mhs.skor_akhir_smart.toFixed(2)}
+                              {mhs.skor_akhir_smart.toFixed(4)}
                           </span>
                           <span className="text-[10px] text-slate-400">
                             Rank #{mhs.peringkat || startIndex + idx + 1}
@@ -363,6 +324,7 @@ export const AdminMahasiswa: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
+                        {mhs.rekap_bulanan && <button type="button" onClick={() => setRecapStudent(mhs)} title="Lihat / Ubah Rekap Bulanan" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md"><ClipboardList className="w-4 h-4" /></button>}
                         <button
                           onClick={() => handleOpenEdit(mhs)}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-md transition-colors"
@@ -405,6 +367,7 @@ export const AdminMahasiswa: React.FC = () => {
       </div>
 
       {/* Modal Tambah/Edit */}
+      {recapStudent && <MonthlyAssessmentModal key={recapStudent.id} student={recapStudent} onClose={() => setRecapStudent(null)} onSaved={refetch} />}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -420,7 +383,7 @@ export const AdminMahasiswa: React.FC = () => {
               required
               value={formNama}
               onChange={(e) => setFormNama(e.target.value)}
-              placeholder="e.g. Andi Pratama"
+              placeholder="Nama lengkap mahasiswa"
               className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
             />
           </div>
@@ -435,7 +398,7 @@ export const AdminMahasiswa: React.FC = () => {
                 required
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
-                placeholder="e.g. andi.pratama@mail.ugm.ac.id"
+                placeholder="email@contoh.com"
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
@@ -445,7 +408,6 @@ export const AdminMahasiswa: React.FC = () => {
               </label>
               <input
                 type="text"
-                required
                 value={formInstitusi}
                 onChange={(e) => setFormInstitusi(e.target.value)}
                 placeholder="e.g. UGM, UNY, UPN"

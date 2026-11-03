@@ -91,7 +91,7 @@ export const authService = {
 
   async resetMahasiswaPKLList(): Promise<MahasiswaPKL[]> {
     const current = await mahasiswaService.list();
-    return mahasiswaService.saveMany(current.map(row => ({...row,nilai_kriteria:{},utility:{},skor_akhir_smart:0,nilai_skala_100:0,peringkat:0}))); 
+    return mahasiswaService.saveMany(current.map(row => ({...row,rekap_bulanan:null,nilai_kriteria:{},utility:{},skor_akhir_smart:0,nilai_skala_100:0,peringkat:0}))); 
   },
 
   async getAuditLogs(): Promise<AuditLog[]> {

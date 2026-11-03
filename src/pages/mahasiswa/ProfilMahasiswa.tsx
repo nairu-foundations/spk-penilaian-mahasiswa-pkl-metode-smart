@@ -6,9 +6,9 @@ import { authService } from '../../services/authService';
 export const ProfilMahasiswa: React.FC = () => {
   const { user, refreshUser } = useAuth();
 
-  const [nama, setNama] = useState(user?.nama || 'Andi Pratama');
+  const [nama, setNama] = useState(user?.nama || 'Mahasiswa');
   const [nim, setNim] = useState(user?.nim || '20241001');
-  const [email, setEmail] = useState(user?.email || 'andi.pratama@mhs.ac.id');
+  const [email, setEmail] = useState(user?.email || '');
   const [prodi, setProdi] = useState(user?.prodi || 'Teknik Informatika');
   const [angkatan, setAngkatan] = useState(user?.angkatan || '2022');
   const [noHp, setNoHp] = useState(user?.no_hp || '081234567891');

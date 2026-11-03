@@ -1,142 +1,157 @@
 [
   {
-    "id": "mhs-001",
+    "id": "e1e564c8-800b-4fb4-a270-ce51b92386af",
     "kode_alternatif": "A1",
-    "nama": "Andi Pratama",
-    "nim": "20241001",
-    "institusi": "Universitas Gadjah Mada",
-    "bagian": "IT / Software Engineering",
-    "periode": "Periode 1 - 2025",
-    "tanggal_mulai": "2025-01-01",
-    "tanggal_selesai": "2025-06-30",
-    "no_hp": "0812-3456-7801",
-    "email": "andi.pratama@mail.ugm.ac.id",
-    "status": "Aktif",
-    "nilai_kriteria": {
-      "C1": 95,
-      "C2": 90,
-      "C3": 92
-    },
-    "utility": {
-      "C1": 0.95,
-      "C2": 0.90,
-      "C3": 0.92
-    },
-    "skor_akhir_smart": 0.9250,
-    "nilai_skala_100": 92.50,
-    "peringkat": 1,
-    "keterangan_nilai": "Sangat Baik"
-  },
-  {
-    "id": "mhs-002",
-    "kode_alternatif": "A2",
-    "nama": "Rina Anggraini",
-    "nim": "20241004",
-    "institusi": "Universitas Negeri Yogyakarta",
-    "bagian": "HRD & Talent Development",
-    "periode": "Periode 1 - 2025",
-    "tanggal_mulai": "2025-01-01",
-    "tanggal_selesai": "2025-06-30",
-    "no_hp": "0812-3456-7802",
-    "email": "rina.anggraini@student.uny.ac.id",
-    "status": "Aktif",
-    "nilai_kriteria": {
-      "C1": 95,
-      "C2": 90,
-      "C3": 85
-    },
-    "utility": {
-      "C1": 0.95,
-      "C2": 0.90,
-      "C3": 0.85
-    },
-    "skor_akhir_smart": 0.8900,
-    "nilai_skala_100": 89.00,
-    "peringkat": 2,
-    "keterangan_nilai": "Baik"
-  },
-  {
-    "id": "mhs-003",
-    "kode_alternatif": "A3",
-    "nama": "Siti Nurhaliza",
-    "nim": "20241002",
-    "institusi": "Universitas Pembangunan Nasional",
-    "bagian": "Marketing & PR",
-    "periode": "Periode 1 - 2025",
-    "tanggal_mulai": "2025-01-01",
-    "tanggal_selesai": "2025-06-30",
-    "no_hp": "0812-3456-7803",
-    "email": "siti.nurhaliza@upnyk.ac.id",
+    "nama": "Moh. Farhan Assidiqi",
+    "email": "mohfarhansidiq18@gmail.com",
+    "nim": "",
+    "institusi": "",
+    "bagian": "",
+    "periode": "Periode 1 - 2026",
     "status": "Aktif",
     "nilai_kriteria": {
       "C1": 90,
-      "C2": 95,
-      "C3": 85
+      "C2": 88.8889,
+      "C3": 100
     },
     "utility": {
-      "C1": 0.90,
-      "C2": 0.95,
-      "C3": 0.85
+      "C1": 0.9,
+      "C2": 0.888889,
+      "C3": 1
     },
-    "skor_akhir_smart": 0.8850,
-    "nilai_skala_100": 88.50,
+    "skor_akhir_smart": 0.9478,
+    "nilai_skala_100": 94.78,
     "peringkat": 3,
-    "keterangan_nilai": "Baik"
+    "keterangan_nilai": "Sangat Baik",
+    "no_hp": "",
+    "tanggal_mulai": null,
+    "tanggal_selesai": null,
+    "pembimbing_industri": "",
+    "catatan_evaluasi": "",
+    "rekap_bulanan": null
   },
   {
-    "id": "mhs-004",
+    "id": "7c941d97-0d07-462b-88b4-df0ed24155aa",
+    "kode_alternatif": "A2",
+    "nama": "Febrian Maulana",
+    "email": "febrianmaulana24@gmail.com",
+    "nim": "",
+    "institusi": "",
+    "bagian": "",
+    "periode": "Periode 1 - 2026",
+    "status": "Aktif",
+    "nilai_kriteria": {
+      "C1": 95,
+      "C2": 89.4737,
+      "C3": 100
+    },
+    "utility": {
+      "C1": 0.95,
+      "C2": 0.894737,
+      "C3": 1
+    },
+    "skor_akhir_smart": 0.9639,
+    "nilai_skala_100": 96.39,
+    "peringkat": 1,
+    "keterangan_nilai": "Sangat Baik",
+    "no_hp": "",
+    "tanggal_mulai": null,
+    "tanggal_selesai": null,
+    "pembimbing_industri": "",
+    "catatan_evaluasi": "",
+    "rekap_bulanan": null
+  },
+  {
+    "id": "496e7c04-9a63-43a7-afe4-052fcc192a14",
+    "kode_alternatif": "A3",
+    "nama": "Rafael Theo Santoso",
+    "email": "rafaelsantoso00@gmail.com",
+    "nim": "",
+    "institusi": "",
+    "bagian": "",
+    "periode": "Periode 1 - 2026",
+    "status": "Aktif",
+    "nilai_kriteria": {
+      "C1": 90,
+      "C2": 94.4444,
+      "C3": 100
+    },
+    "utility": {
+      "C1": 0.9,
+      "C2": 0.944444,
+      "C3": 1
+    },
+    "skor_akhir_smart": 0.9589,
+    "nilai_skala_100": 95.89,
+    "peringkat": 2,
+    "keterangan_nilai": "Sangat Baik",
+    "no_hp": "",
+    "tanggal_mulai": null,
+    "tanggal_selesai": null,
+    "pembimbing_industri": "",
+    "catatan_evaluasi": "",
+    "rekap_bulanan": null
+  },
+  {
+    "id": "78fb066f-8f52-4046-b7ba-b8dc39f4cad2",
     "kode_alternatif": "A4",
-    "nama": "Budi Santoso",
-    "nim": "20241003",
-    "institusi": "Universitas Islam Indonesia",
-    "bagian": "Accounting & Finance",
-    "periode": "Periode 1 - 2025",
-    "tanggal_mulai": "2025-01-01",
-    "tanggal_selesai": "2025-06-30",
-    "no_hp": "0812-3456-7804",
-    "email": "budi.santoso@students.uii.ac.id",
+    "nama": "Rico Adicahyo Nirwikoro",
+    "email": "ricoacahyo12@gmail.com",
+    "nim": "",
+    "institusi": "",
+    "bagian": "",
+    "periode": "Periode 1 - 2026",
     "status": "Aktif",
     "nilai_kriteria": {
       "C1": 80,
-      "C2": 85,
+      "C2": 81.25,
       "C3": 75
     },
     "utility": {
-      "C1": 0.80,
-      "C2": 0.85,
+      "C1": 0.8,
+      "C2": 0.8125,
       "C3": 0.75
     },
-    "skor_akhir_smart": 0.7850,
-    "nilai_skala_100": 78.50,
+    "skor_akhir_smart": 0.7775,
+    "nilai_skala_100": 77.75,
     "peringkat": 4,
-    "keterangan_nilai": "Cukup"
+    "keterangan_nilai": "Cukup",
+    "no_hp": "",
+    "tanggal_mulai": null,
+    "tanggal_selesai": null,
+    "pembimbing_industri": "",
+    "catatan_evaluasi": "",
+    "rekap_bulanan": null
   },
   {
-    "id": "mhs-005",
+    "id": "b7b7bcdb-e92a-42c3-8d02-1b2dc36404c6",
     "kode_alternatif": "A5",
-    "nama": "Dika Pratama",
-    "nim": "20241005",
-    "institusi": "Institut Teknologi Yogyakarta",
-    "bagian": "IT / Infrastructure",
-    "periode": "Periode 1 - 2025",
-    "tanggal_mulai": "2025-01-01",
-    "tanggal_selesai": "2025-06-30",
-    "no_hp": "0812-3456-7805",
-    "email": "dika.pratama@ity.ac.id",
+    "nama": "Riski Ardianto",
+    "email": "riskiardianto779@gmail.com",
+    "nim": "",
+    "institusi": "",
+    "bagian": "",
+    "periode": "Periode 1 - 2026",
     "status": "Aktif",
     "nilai_kriteria": {
       "C1": 75,
-      "C2": 80,
-      "C3": 70
+      "C2": 73.3333,
+      "C3": 50
     },
     "utility": {
       "C1": 0.75,
-      "C2": 0.80,
-      "C3": 0.70
+      "C2": 0.733333,
+      "C3": 0.5
     },
-    "skor_akhir_smart": 0.7350,
-    "nilai_skala_100": 73.50,
+    "skor_akhir_smart": 0.6217,
+    "nilai_skala_100": 62.17,
     "peringkat": 5,
-    "keterangan_nilai": "Cukup"
+    "keterangan_nilai": "Kurang",
+    "no_hp": "",
+    "tanggal_mulai": null,
+    "tanggal_selesai": null,
+    "pembimbing_industri": "",
+    "catatan_evaluasi": "",
+    "rekap_bulanan": null
   }
 ]

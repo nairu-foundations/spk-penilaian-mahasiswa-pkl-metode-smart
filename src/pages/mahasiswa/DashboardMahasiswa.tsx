@@ -57,8 +57,8 @@ export const DashboardMahasiswa: React.FC = () => {
     return found || smartResult.ranking[0]; // fallback to top student
   }, [smartResult, user]);
 
-  const studentEmail = currentStudent?.email || user.email || 'andi.pratama@mail.ugm.ac.id';
-  const studentName = currentStudent?.nama || user.nama || 'Andi Pratama';
+  const studentEmail = currentStudent?.email || user.email || '';
+  const studentName = currentStudent?.nama || user.nama || 'Mahasiswa';
   const studentDept = currentStudent?.bagian || user.bagian || 'IT / Software Engineering';
   const studentInst = currentStudent?.institusi || user.institusi || 'PT Seven Inc.';
 

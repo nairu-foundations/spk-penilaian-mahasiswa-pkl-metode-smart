@@ -32,6 +32,26 @@ export interface Kriteria {
 }
 
 
+export interface RekapBulananPKL {
+  hari_kerja: number;
+  hari_hadir: number;
+  hari_tepat_waktu: number;
+  target_tugas: number;
+  tugas_selesai: number;
+  dasar_c2: 'hari_kerja' | 'hari_hadir';
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  sumber?: string;
+  harian?: {
+    tanggal: string;
+    hadir: boolean;
+    jam_masuk: string | null;
+    tepat_waktu: boolean | null;
+    target_tugas: number;
+    tugas_selesai: number;
+  }[];
+}
+
 export interface MahasiswaPKL {
   id: string;
   kode_alternatif?: string; // A1, A2, A3, etc.
@@ -47,6 +67,7 @@ export interface MahasiswaPKL {
   status: 'Aktif' | 'Selesai' | 'Menunggu Verifikasi';
   pembimbing_industri?: string;
   catatan_evaluasi?: string;
+  rekap_bulanan?: RekapBulananPKL | null;
   nilai_kriteria?: Record<string, number>; // { C1: 95, C2: 90, C3: 92 }
   utility?: Record<string, number>;        // { C1: 0.95, C2: 0.90, C3: 0.92 }
   skor_akhir_smart?: number;

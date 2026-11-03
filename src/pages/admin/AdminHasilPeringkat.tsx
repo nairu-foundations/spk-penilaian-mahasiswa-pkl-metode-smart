@@ -224,14 +224,14 @@ export const AdminHasilPeringkat: React.FC = () => {
                 </span>
                 <Award className="w-3.5 h-3.5 text-amber-500" />
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold">
-                  Sangat Baik
+                  {top1?.keterangan || 'Belum dihitung'}
                 </span>
               </div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                {top1 ? top1.nama : 'Andi Pratama'}
+                {top1 ? top1.nama : 'Belum ada hasil'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Email: {top1 ? (top1.email || top1.nim) : 'andi.pratama@mail.ugm.ac.id'} · {top1 ? top1.bagian : 'IT / Software Engineering'} · {top1?.institusi || 'Universitas Gadjah Mada'}
+                  Email: {top1?.email || '?'}{[top1?.bagian, top1?.institusi].filter(Boolean).map((detail, i) => <span key={i}> ? {detail}</span>)}
               </p>
             </div>
           </div>
@@ -240,10 +240,10 @@ export const AdminHasilPeringkat: React.FC = () => {
             <div className="text-center sm:text-right">
               <p className="text-xs text-slate-500">Nilai Akhir (Vi)</p>
               <p className="text-4xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
-                {top1 ? top1.skor_akhir.toFixed(4) : '0.9250'}
+                {top1 ? top1.skor_akhir.toFixed(4) : '?'}
               </p>
               <p className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
-                Skala 100: {top1 ? top1.nilai_skala_100.toFixed(2) : '92.50'}
+                Skala 100: {top1 ? top1.nilai_skala_100.toFixed(2) : '?'}
               </p>
             </div>
             <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 border-2 border-amber-400 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black text-2xl shadow-xs shrink-0">

@@ -7,6 +7,7 @@ import { jalankanSMARTMahasiswa } from '../../utils/smart';
 import { Skeleton } from '../../components/common/Skeleton';
 import { MahasiswaPKL } from '../../types';
 import { usePeriode } from '../../hooks/usePeriode';
+import { MonthlyAssessmentModal } from '../../components/admin/MonthlyAssessmentModal';
 
 export const AdminInputPenilaian: React.FC = () => {
   const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs, refetch: refetchMhs } = useQuery(() =>
@@ -20,6 +21,7 @@ export const AdminInputPenilaian: React.FC = () => {
   const [savedSuccessId, setSavedSuccessId] = useState<string | null>(null);
   const [saveAllSuccess, setSaveAllSuccess] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [recapStudent, setRecapStudent] = useState<MahasiswaPKL | null>(null);
 
   const isLoading = loadingMhs || loadingKrit;
 
@@ -189,7 +191,7 @@ export const AdminInputPenilaian: React.FC = () => {
                 <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">Bobot 30%</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 text-[11px]">
-                Menilai tingkat presensi dan keterlibatan harian selama jam operasional PKL. Semakin tinggi kehadiran, nilai semakin mendekati 100.
+                Hari hadir ÷ total hari kerja × 100. Untuk dataset Oktober 2026, totalnya 20 hari kerja.
               </p>
             </div>
 
@@ -199,7 +201,7 @@ export const AdminInputPenilaian: React.FC = () => {
                 <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">Bobot 20%</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 text-[11px]">
-                Menilai kedisiplinan jadwal masuk dan kepatuhan jam kerja. Dikonversi ke skor benefit: 0 keterlambatan = nilai 95-100.
+                Hari tepat waktu ÷ hari hadir × 100. Batas masuk pukul 08.00; tanpa hari hadir, nilai C2 adalah 0.
               </p>
             </div>
 
@@ -209,7 +211,7 @@ export const AdminInputPenilaian: React.FC = () => {
                 <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">Bobot 50%</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 text-[11px]">
-                Prioritas utama yang menilai tanggung jawab penuntasan tugas proyek PKL sesuai target dan standar mutu PT Seven Inc.
+                Tugas selesai ÷ 4 tugas bulanan × 100. Satu tugas selesai bernilai 25 poin C3.
               </p>
             </div>
           </div>
@@ -245,6 +247,9 @@ export const AdminInputPenilaian: React.FC = () => {
       </div>
 
       {/* Matrix Table matching Screen 6 */}
+      <div className="rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30 p-4 text-xs text-blue-800 dark:text-blue-200">
+        PKL satu bulan: 20 hari kerja dan 4 tugas. Nilai dari data harian dihitung otomatis; pilih <strong>Ubah Rekap</strong> untuk mengubah jumlah hari atau tugas.
+      </div>
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         {isLoading ? (
           <div className="p-6 space-y-4">
@@ -312,7 +317,8 @@ export const AdminInputPenilaian: React.FC = () => {
                               type="number"
                               min="0"
                               max="100"
-                              value={val}
+                              value={Number(val.toFixed(2))}
+                              readOnly={!!mhs.rekap_bulanan}
                               onChange={(e) =>
                                 handleScoreChange(mhs.id, krit.kode, Number(e.target.value))
                               }
@@ -325,7 +331,7 @@ export const AdminInputPenilaian: React.FC = () => {
 
                     {/* Save Action matching Screen 6 */}
                     <td className="py-3 px-4 text-center">
-                      <button
+                      {mhs.rekap_bulanan ? <button type="button" onClick={() => setRecapStudent(mhs)} className="text-xs font-semibold text-blue-600 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 whitespace-nowrap">Ubah Rekap</button> : <button
                         onClick={() => handleSaveStudent(mhs)}
                         className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                           savedSuccessId === mhs.id
@@ -343,7 +349,7 @@ export const AdminInputPenilaian: React.FC = () => {
                             <Save className="w-3.5 h-3.5" /> Simpan
                           </>
                         )}
-                      </button>
+                      </button>}
                     </td>
                   </tr>
                 ))}
@@ -354,6 +360,7 @@ export const AdminInputPenilaian: React.FC = () => {
       </div>
 
       {/* Summary note below table */}
+      {recapStudent && <MonthlyAssessmentModal key={recapStudent.id} student={recapStudent} onClose={() => setRecapStudent(null)} onSaved={refetchMhs} />}
       <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
         <div className="flex items-center gap-2">
           <Calculator className="w-4 h-4 text-blue-600 shrink-0" />
