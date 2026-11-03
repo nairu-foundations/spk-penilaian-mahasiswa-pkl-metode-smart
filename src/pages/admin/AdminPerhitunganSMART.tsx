@@ -24,8 +24,8 @@ import {
 import { useQuery } from '../../hooks/useData';
 import { authService } from '../../services/authService';
 import { spkService } from '../../services/spkService';
-import { SMARTMahasiswaResult } from '../../utils/smart';
-import { prosesSMART, signatureSMART } from '../../utils/smartWorkflow';
+import { prosesSMART } from '../../utils/smartWorkflow';
+import { smartHistoryService } from '../../services/smartHistoryService';
 import { Skeleton } from '../../components/common/Skeleton';
 import { Modal } from '../../components/common/Modal';
 import { MahasiswaPKL } from '../../types';
@@ -46,10 +46,14 @@ export const AdminPerhitunganSMART: React.FC = () => {
   } = useQuery(() => authService.getMahasiswaPKLList());
   const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
-  const [activeStep, setActiveStep] = useState<number>(1);
-  const [completed, setCompleted] = useState<{ result: SMARTMahasiswaResult; signature: string } | null>(null);
-  const inputSignature = signatureSMART(mahasiswaList ?? [], kriteriaList ?? [], selectedPeriode);
-  const calculationResult = completed?.signature === inputSignature ? completed.result : null;
+  const [activeStep, setActiveStep] = useState<number>(4);
+  const { data: history, error: historyError, loading: loadingHistory, setData: setHistory, refetch: refetchHistory } = useQuery(() => smartHistoryService.list());
+  const [selectedRunId, setSelectedRunId] = useState<string | null | undefined>(undefined);
+  const [historyView, setHistoryView] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [deletingHistory, setDeletingHistory] = useState(false);
+  const currentRun = selectedRunId === null ? null : selectedRunId ? (history?.find(row => row.id === selectedRunId) ?? history?.find(row => row.periode === selectedPeriode)) : history?.find(row => row.periode === selectedPeriode);
+  const calculationResult = currentRun?.result ?? null;
   const [isProcessing, setIsProcessing] = useState(false);
   const [justCalculated, setJustCalculated] = useState(false);
 
@@ -82,7 +86,6 @@ export const AdminPerhitunganSMART: React.FC = () => {
   const handleExcelFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCompleted(null);
     setExcelReady(false);
     setExcelParsedData(null);
     setExcelFile(null);
@@ -106,10 +109,10 @@ export const AdminPerhitunganSMART: React.FC = () => {
       alert('Belum ada data perhitungan SMART untuk diekspor.');
       return;
     }
-    eksporHasilSMARTKeExcel(calculationResult.ranking, selectedPeriode);
+    eksporHasilSMARTKeExcel(calculationResult.ranking, currentRun?.periode ?? selectedPeriode);
   };
 
-  const isLoading = loadingMhs || loadingKrit;
+  const isLoading = loadingMhs || loadingKrit || loadingHistory;
 
   // Prepare editable raw inputs without calculating results.
   useEffect(() => {
@@ -122,19 +125,18 @@ export const AdminPerhitunganSMART: React.FC = () => {
   }, [mahasiswaList, isInlineEdit]);
 
   useEffect(() => {
-    setCompleted(null);
+    setSelectedRunId(undefined);
     setExcelReady(false);
     setExcelParsedData(null);
     setExcelFile(null);
     setIsExcelModalOpen(false);
-    setActiveStep(1);
+    setActiveStep(4);
   }, [selectedPeriode]);
 
   const handleRunCalculation = async () => {
     if (isProcessing || isParsingExcel || !kriteriaList || !selectedPeriode || (excelParsedData && !excelReady)) return;
     setIsProcessing(true);
     setNotification(null);
-    setCompleted(null);
     setJustCalculated(false);
     try {
       const { rows, result } = await prosesSMART({
@@ -145,12 +147,16 @@ export const AdminPerhitunganSMART: React.FC = () => {
         save: (rows, replace) => authService.importMahasiswaPKL(rows, replace),
         read: () => authService.getMahasiswaPKLList(),
       });
+      const saved = await smartHistoryService.save({ periode: selectedPeriode, source: excelFile?.name ?? 'Data Supabase', result });
       setMahasiswaList(rows);
-      setCompleted({ result, signature: signatureSMART(rows, kriteriaList, selectedPeriode) });
+      setHistory(previous => [saved, ...(previous ?? []).filter(row => row.id !== saved.id)]);
+      setSelectedRunId(saved.id);
+      setHistoryView(false);
+      setHistoryPage(1);
       setActiveStep(4);
       setIsExcelModalOpen(false);
       setExcelReady(false);
-    setExcelParsedData(null);
+      setExcelParsedData(null);
       setExcelFile(null);
       setIsInlineEdit(false);
       setJustCalculated(true);
@@ -257,8 +263,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
         message: `Data mahasiswa ${targetStudent.nama} berhasil dimasukkan ke dalam perhitungan SMART!`,
       });
       setTimeout(() => setNotification(null), 4000);
-      setCompleted(null);
-      setActiveStep(2);
+        setActiveStep(2);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Gagal menyimpan perubahan ke Supabase.');
     }
@@ -325,13 +330,32 @@ export const AdminPerhitunganSMART: React.FC = () => {
     }
   };
 
-  const activeKriteria = (kriteriaList || [])
+  const handleDeleteHistory = async (id?: string) => {
+    if (deletingHistory || isProcessing) return;
+    const message = id ? 'Hapus seluruh hasil dan langkah perhitungan pada riwayat ini?' : 'Hapus SEMUA riwayat perhitungan SMART beserta seluruh hasilnya? Data master mahasiswa dan akun tetap disimpan.';
+    if (!window.confirm(message)) return;
+    setDeletingHistory(true);
+    try {
+      const removed = await smartHistoryService.remove(id);
+      setHistory(previous => (previous ?? []).filter(row => !removed.includes(row.id)));
+      if (!id || (selectedRunId && removed.includes(selectedRunId))) setSelectedRunId(undefined);
+      setNotification({ type: 'success', message: `${removed.length} riwayat perhitungan berhasil dihapus dari Supabase.` });
+      await refetchHistory();
+    } catch (error) {
+      setNotification({ type: 'error', message: error instanceof Error ? error.message : 'Gagal menghapus riwayat.' });
+    } finally { setDeletingHistory(false); }
+  };
+  const totalHistoryPages = Math.max(1, Math.ceil((history?.length ?? 0) / 5));
+  const visibleHistoryPage = Math.min(historyPage, totalHistoryPages);
+  const activeKriteria = (calculationResult?.kriteriaList ?? kriteriaList ?? [])
     .filter((k) => k.aktif)
     .sort((a, b) => a.urutan - b.urutan);
 
+  const weight = (code: string) => calculationResult?.bobotNormal[code] ?? ((activeKriteria.find(k => k.kode === code)?.bobot_awal ?? 0) / (activeKriteria.reduce((sum, k) => sum + k.bobot_awal, 0) || 1));
+
   return (
     <div className="space-y-6">
-      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
+      {(mahasiswaError || kriteriaError || historyError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError || historyError}</div>}
       {/* Header with Prominent Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -431,12 +455,28 @@ export const AdminPerhitunganSMART: React.FC = () => {
         </div>
       </div>
 
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3" aria-label="Riwayat perhitungan SMART">
+        <div className="flex flex-wrap justify-between items-center gap-3">
+          <div><h2 className="font-bold text-sm">Hasil &amp; Riwayat Perhitungan</h2><p className="text-xs text-slate-500 mt-1">{history?.length ?? 0} proses tersimpan di Supabase. Setiap proses menyimpan nilai, bobot, utilitas, dan peringkat saat itu.</p></div>
+          <div className="flex flex-wrap gap-2">
+            <button disabled={isProcessing || deletingHistory} onClick={() => { setSelectedRunId(undefined); setHistoryView(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); setActiveStep(4); }} className={`px-3 py-2 text-xs rounded-lg border ${!historyView ? 'border-blue-500 text-blue-600' : 'border-slate-200'}`}>Hasil Terbaru</button>
+            <button disabled={isProcessing || deletingHistory} onClick={() => setHistoryView(true)} className={`px-3 py-2 text-xs rounded-lg border ${historyView ? 'border-blue-500 text-blue-600' : 'border-slate-200'}`}>Riwayat ({history?.length ?? 0})</button>
+            <button disabled={!history?.length || isProcessing || deletingHistory} onClick={() => handleDeleteHistory()} className="px-3 py-2 text-xs rounded-lg border border-red-200 text-red-600 disabled:opacity-40 flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" />{deletingHistory ? 'Menghapus...' : 'Hapus Semua Riwayat'}</button>
+          </div>
+        </div>
+        {currentRun && !historyView && <div className="text-xs rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3 flex flex-wrap justify-between items-center gap-2"><span><strong>{currentRun.source}</strong> / {currentRun.periode} / {new Date(currentRun.created_at).toLocaleString('id-ID')} / {currentRun.result.ranking.length} mahasiswa</span><button disabled={isProcessing || deletingHistory} className="text-red-600 font-semibold" onClick={() => handleDeleteHistory(currentRun.id)}>Hapus Hasil Ini</button></div>}
+        {historyView && <>
+          <div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead><tr className="bg-slate-50 dark:bg-slate-800"><th className="p-3">Waktu Proses</th><th className="p-3">Sumber / Periode</th><th className="p-3">Mahasiswa</th><th className="p-3">Aksi</th></tr></thead><tbody>{(history ?? []).slice((visibleHistoryPage - 1) * 5, visibleHistoryPage * 5).map(run => <tr key={run.id} className="border-t border-slate-200 dark:border-slate-800"><td className="p-3 whitespace-nowrap">{new Date(run.created_at).toLocaleString('id-ID')}</td><td className="p-3"><strong>{run.source}</strong><p className="text-slate-500 mt-1">{run.periode}</p></td><td className="p-3">{run.result.ranking.length}</td><td className="p-3"><div className="flex gap-3"><button disabled={isProcessing || deletingHistory} className="text-blue-600 font-semibold" onClick={() => { setSelectedRunId(run.id); setHistoryView(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); setActiveStep(4); }}>Buka Hasil</button><button disabled={isProcessing || deletingHistory} className="text-red-600" onClick={() => handleDeleteHistory(run.id)}>Hapus</button></div></td></tr>)}</tbody></table>{!history?.length && <p className="text-center text-slate-500 py-6">Belum ada riwayat tersimpan.</p>}</div>
+          <div className="flex justify-between items-center text-xs"><span>Halaman {visibleHistoryPage} dari {totalHistoryPages}</span><div className="flex gap-3"><button disabled={visibleHistoryPage <= 1} onClick={() => setHistoryPage(visibleHistoryPage - 1)}>Sebelumnya</button><button disabled={visibleHistoryPage >= totalHistoryPages} onClick={() => setHistoryPage(visibleHistoryPage + 1)}>Selanjutnya</button></div></div>
+        </>}
+      </section>
+
       {excelReady && excelParsedData && <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div><p className="font-bold text-blue-800 dark:text-blue-200">{excelParsedData.length} mahasiswa siap diproses dari {excelFile?.name}</p><p className="mt-1 text-slate-600 dark:text-slate-300">Mode: {replaceMode ? 'Ganti seluruh data' : 'Gabungkan dan perbarui'}. Data belum disimpan. Tekan tombol biru Proses Perhitungan pada panel Langkah Perhitungan SMART.</p></div>
         <button type="button" disabled={isProcessing} onClick={() => setIsExcelModalOpen(true)} className="font-semibold text-blue-700 dark:text-blue-300 underline">Tinjau Data Excel</button>
       </div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${historyView ? 'hidden' : ''}`}>
         {/* Left Column: Steps, Formula & Weight Information */}
         <div className="lg:col-span-4 space-y-4">
           {/* Langkah Perhitungan SMART Card */}
@@ -446,7 +486,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                 Langkah Perhitungan SMART
               </h3>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">
-                {excelParsedData?.length ?? mahasiswaList?.filter(m => m.periode === selectedPeriode).length ?? 0} Alternatif
+                {excelParsedData?.length ?? calculationResult?.ranking.length ?? mahasiswaList?.filter(m => m.periode === selectedPeriode).length ?? 0} Alternatif
               </span>
             </div>
 
@@ -469,7 +509,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                       Normalisasi Bobot (w_j)
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      b_j / sum(b_k) -&gt; 0.30, 0.20, 0.50
+                      b_j / sum(b_k) -&gt; {activeKriteria.map(k => weight(k.kode).toFixed(2)).join(', ')}
                     </span>
                   </div>
                 </div>
@@ -554,7 +594,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
             <button
               onClick={handleRunCalculation}
-              disabled={isProcessing || isParsingExcel || isLoading || !selectedPeriode || !activeKriteria.length || (!!excelParsedData && !excelReady)}
+              disabled={isProcessing || deletingHistory || isParsingExcel || isLoading || !selectedPeriode || !kriteriaList?.some(k => k.aktif) || (!!excelParsedData && !excelReady)}
               className={`mt-5 w-full py-2.5 text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 ${
                 justCalculated
                   ? 'bg-emerald-600 text-white'
@@ -584,16 +624,16 @@ export const AdminPerhitunganSMART: React.FC = () => {
             </h4>
             <div className="grid grid-cols-3 gap-2 text-xs font-mono text-center">
               <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded border border-slate-100 dark:border-slate-800">
-                <span className="block font-bold text-blue-600">C1: 0.30</span>
-                <span className="text-[10px] text-slate-500">Kehadiran (30%)</span>
+                <span className="block font-bold text-blue-600">C1: {weight('C1').toFixed(4)}</span>
+                <span className="text-[10px] text-slate-500">Kehadiran ({(weight('C1') * 100).toFixed(2)}%)</span>
               </div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded border border-slate-100 dark:border-slate-800">
-                <span className="block font-bold text-blue-600">C2: 0.20</span>
-                <span className="text-[10px] text-slate-500">Ketepatan (20%)</span>
+                <span className="block font-bold text-blue-600">C2: {weight('C2').toFixed(4)}</span>
+                <span className="text-[10px] text-slate-500">Ketepatan ({(weight('C2') * 100).toFixed(2)}%)</span>
               </div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded border border-slate-100 dark:border-slate-800">
-                <span className="block font-bold text-blue-600">C3: 0.50</span>
-                <span className="text-[10px] text-slate-500">Tugas (50%)</span>
+                <span className="block font-bold text-blue-600">C3: {weight('C3').toFixed(4)}</span>
+                <span className="text-[10px] text-slate-500">Tugas ({(weight('C3') * 100).toFixed(2)}%)</span>
               </div>
             </div>
             <p className="text-[11px] text-slate-500 text-center mt-2 font-medium">
@@ -621,7 +661,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
               <div>
                 <p className="text-emerald-400 font-bold text-[11px]">3. Nilai Akhir Alternatif (Vi):</p>
                 <p className="text-slate-300">V(a_i) = &Sigma; [w_j &times; u_j(a_i)]</p>
-                <p className="text-slate-400 text-[10px]">V = (0.30&times;u1) + (0.20&times;u2) + (0.50&times;u3)</p>
+                <p className="text-slate-400 text-[10px]">V = ({weight('C1').toFixed(4)}&times;u1) + ({weight('C2').toFixed(4)}&times;u2) + ({weight('C3').toFixed(4)}&times;u3)</p>
               </div>
             </div>
           </div>
@@ -641,7 +681,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                 </h3>
                 <p className="text-xs text-slate-500">
                   {activeStep === 1 && 'Perhitungan rasio bobot setiap kriteria terhadap total bobot (100%)'}
-                  {activeStep === 2 && 'Data mentah penilaian kedisiplinan dan kinerja PKL (skala 0 - 100). Anda dapat mengedit nilai atau menambah mahasiswa.'}
+                  {activeStep === 2 && 'Snapshot nilai saat proses dijalankan (skala 0?100). Perubahan data master tidak mengubah arsip ini.'}
                   {activeStep === 3 && 'Konversi nilai mentah menjadi utilitas skala 0 – 1 (u_ij = x_ij / 100)'}
                   {activeStep === 4 && 'Hasil perkalian bobot w_j dengan utilitas u_ij beserta urutan peringkat juara'}
                 </p>
@@ -649,34 +689,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
               {/* Action buttons depending on active step */}
               <div className="flex items-center gap-2 shrink-0">
-                {activeStep === 2 ? (
-                  <>
-                    <button
-                      onClick={() => setIsInlineEdit(!isInlineEdit)}
-                      disabled={!calculationResult || isProcessing}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
-                        isInlineEdit
-                          ? 'bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>{isInlineEdit ? 'Batal Edit' : 'Edit Nilai C1/C2/C3'}</span>
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleExportFullExcel}
-                      disabled={!calculationResult || isProcessing}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 transition-colors shadow-xs"
-                      title="Ekspor Hasil SMART ke File Excel (.xlsx)"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5" />
-                      <span>Ekspor Excel (.xlsx)</span>
-                    </button>
-                  </div>
-                )}
+                <button onClick={handleExportFullExcel} disabled={!calculationResult || isProcessing} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 flex items-center gap-1.5 disabled:opacity-50"><FileSpreadsheet className="w-3.5 h-3.5" />Ekspor Excel (.xlsx)</button>
               </div>
             </div>
 
@@ -686,11 +699,11 @@ export const AdminPerhitunganSMART: React.FC = () => {
                   <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
-            ) : !calculationResult ? (
+            ) : !calculationResult || isProcessing ? (
               <div className="p-12 text-center text-slate-500">
                 <Calculator className="w-10 h-10 mx-auto mb-3 text-blue-500" />
-                <p className="font-semibold">{excelParsedData ? `${excelParsedData.length} mahasiswa dari ${excelFile?.name} siap diproses.` : 'Belum ada hasil perhitungan untuk data saat ini.'}</p>
-                <p className="text-xs mt-2">Unggah Excel atau gunakan data Supabase, lalu tekan &quot;Proses Perhitungan&quot;. Hasil perlu diproses ulang setelah data atau kriteria berubah.</p>
+                <p className="font-semibold">{excelParsedData ? `${excelParsedData.length} mahasiswa dari ${excelFile?.name} siap diproses.` : 'Belum ada hasil perhitungan tersimpan untuk tampilan ini.'}</p>
+                <p className="text-xs mt-2">Unggah Excel atau gunakan data Supabase, lalu tekan &quot;Proses Perhitungan&quot;. Setiap proses disimpan sebagai riwayat tersendiri dan tetap tersedia saat halaman dibuka kembali.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -767,13 +780,13 @@ export const AdminPerhitunganSMART: React.FC = () => {
                           <th className="py-3 px-4 w-12 text-center">Kode</th>
                           <th className="py-3 px-4 min-w-[180px]">Nama Mahasiswa PKL</th>
                           <th className="py-3 px-4 text-center font-mono text-blue-600 font-bold">
-                            C1: Kehadiran (30%)
+                            C1: Kehadiran ({(weight('C1') * 100).toFixed(2)}%)
                           </th>
                           <th className="py-3 px-4 text-center font-mono text-blue-600 font-bold">
-                            C2: Ketepatan Waktu (20%)
+                            C2: Ketepatan Waktu ({(weight('C2') * 100).toFixed(2)}%)
                           </th>
                           <th className="py-3 px-4 text-center font-mono text-blue-600 font-bold">
-                            C3: Tugas (50%)
+                            C3: Tugas ({(weight('C3') * 100).toFixed(2)}%)
                           </th>
                           <th className="py-3 px-4 text-center w-28">Aksi</th>
                         </tr>
@@ -873,25 +886,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                                 )}
                               </td>
 
-                              {/* Action buttons */}
-                              <td className="py-3 px-4 text-center">
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <button
-                                    onClick={() => handleOpenEditModal(item.id)}
-                                    title="Edit data mahasiswa & nilai"
-                                    className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteStudent(item.id, item.nama)}
-                                    title="Hapus dari perhitungan SMART"
-                                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </td>
+                              <td className="py-3 px-4 text-center text-slate-400">Arsip</td>
                             </tr>
                           );
                         })}
@@ -976,13 +971,13 @@ export const AdminPerhitunganSMART: React.FC = () => {
                         <th className="py-3 px-4 w-14 text-center">Rank</th>
                         <th className="py-3 px-4 min-w-[170px]">Nama Mahasiswa PKL</th>
                         <th className="py-3 px-3 text-center font-mono text-[11px] text-slate-500">
-                          w1&times;u1 (30%)
+                          w1&times;u1 ({(weight('C1') * 100).toFixed(2)}%)
                         </th>
                         <th className="py-3 px-3 text-center font-mono text-[11px] text-slate-500">
-                          w2&times;u2 (20%)
+                          w2&times;u2 ({(weight('C2') * 100).toFixed(2)}%)
                         </th>
                         <th className="py-3 px-3 text-center font-mono text-[11px] text-slate-500">
-                          w3&times;u3 (50%)
+                          w3&times;u3 ({(weight('C3') * 100).toFixed(2)}%)
                         </th>
                         <th className="py-3 px-4 text-center font-bold text-blue-600">
                           Nilai Akhir (Vi)
@@ -1157,7 +1152,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                         className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950 px-1.5 py-1 rounded">
-                        w: 30%
+                        w: {(weight('C1') * 100).toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -1178,7 +1173,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                         className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950 px-1.5 py-1 rounded">
-                        w: 20%
+                        w: {(weight('C2') * 100).toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -1199,7 +1194,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                         className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950 px-1.5 py-1 rounded">
-                        w: 50%
+                        w: {(weight('C3') * 100).toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -1228,7 +1223,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
       </Modal>
 
       {/* MODAL: PREVIEW & OTOMASI PERHITUNGAN SMART DARI FILE EXCEL */}
-      <Modal isOpen={isExcelModalOpen && !!excelParsedData} onClose={() => { if (!isProcessing) { setIsExcelModalOpen(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); } }}
+      <Modal isOpen={isExcelModalOpen && !!excelParsedData} onClose={() => { if (!isProcessing) { setIsExcelModalOpen(false); setSelectedRunId(undefined); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); } }}
         title="Pratinjau Input Data Excel" maxWidth="4xl">
         {excelParsedData && <div className="space-y-5">
             {notification?.type === 'error' && <p role="alert" className="rounded-lg bg-red-50 text-red-800 p-3 text-xs">{notification.message}</p>}
@@ -1323,7 +1318,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
               <div className="flex items-center gap-2.5 shrink-0 justify-end">
                 <button
                   type="button"
-                  onClick={() => { setIsExcelModalOpen(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); }}
+                  onClick={() => { setIsExcelModalOpen(false); setSelectedRunId(undefined); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); }}
                   disabled={isImportingExcel || !kriteriaList || !selectedPeriode}
                   className="px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
@@ -1331,7 +1326,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setExcelReady(true); setCompleted(null); setIsExcelModalOpen(false); setActiveStep(1); }}
+                  onClick={() => { setExcelReady(true); setSelectedRunId(null); setHistoryView(false); setIsExcelModalOpen(false); setActiveStep(1); }}
                   disabled={isImportingExcel || !kriteriaList || !selectedPeriode}
                   className="px-5 py-2.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
                 >
