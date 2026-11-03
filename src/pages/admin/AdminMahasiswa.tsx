@@ -120,7 +120,7 @@ export const AdminMahasiswa: React.FC = () => {
 
   const handleDelete = async (id: string, nama: string) => {
     try {
-      if (window.confirm(`Hapus data mahasiswa PKL "${nama}" dari sistem?`)) {
+      if (window.confirm(`Pindahkan mahasiswa PKL "${nama}" ke Tempat Sampah? Data bisa dipulihkan melalui menu Perhitungan SMART - Riwayat Hapus.`)) {
         await authService.deleteMahasiswaPKL(id);
         await refetch();
       }

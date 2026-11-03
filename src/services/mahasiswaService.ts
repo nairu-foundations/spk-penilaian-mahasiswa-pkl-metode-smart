@@ -78,9 +78,10 @@ export const mahasiswaService = {
   },
 
   async remove(id: string): Promise<void> {
-    const { data, error } = await requireDatabase().from('mahasiswa_pkl').delete().eq('id', id).select('id');
+    const { data, error } = await requireDatabase().rpc('trash_mahasiswa_pkl', { p_student_id: id });
     if (error) throw databaseError(error.message);
-    if (!data?.length) throw new Error('Mahasiswa tidak terhapus. Periksa izin database atau muat ulang data.');
-    notifyMutation('Data mahasiswa berhasil dihapus dari Supabase.');
+    if (!data) throw new Error('Mahasiswa tidak dipindahkan ke Tempat Sampah. Periksa izin database atau muat ulang data.');
+    notifyMutation('Data mahasiswa dipindahkan ke Tempat Sampah Supabase.');
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('spk:refresh'));
   },
 };

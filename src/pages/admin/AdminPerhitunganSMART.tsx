@@ -25,6 +25,7 @@ import { useQuery } from '../../hooks/useData';
 import { authService } from '../../services/authService';
 import { spkService } from '../../services/spkService';
 import { prosesSMART } from '../../utils/smartWorkflow';
+import { SmartTrashPanel } from '../../components/admin/SmartTrashPanel';
 import { smartHistoryService } from '../../services/smartHistoryService';
 import { Skeleton } from '../../components/common/Skeleton';
 import { Modal } from '../../components/common/Modal';
@@ -52,6 +53,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
   const [historyView, setHistoryView] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [deletingHistory, setDeletingHistory] = useState(false);
+  const [trashBusy, setTrashBusy] = useState(false);
   const currentRun = selectedRunId === null ? null : selectedRunId ? (history?.find(row => row.id === selectedRunId) ?? history?.find(row => row.periode === selectedPeriode)) : history?.find(row => row.periode === selectedPeriode);
   const calculationResult = currentRun?.result ?? null;
   const [isProcessing, setIsProcessing] = useState(false);
@@ -134,7 +136,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
   }, [selectedPeriode]);
 
   const handleRunCalculation = async () => {
-    if (isProcessing || isParsingExcel || !kriteriaList || !selectedPeriode || (excelParsedData && !excelReady)) return;
+    if (isProcessing || trashBusy || isParsingExcel || !kriteriaList || !selectedPeriode || (excelParsedData && !excelReady)) return;
     setIsProcessing(true);
     setNotification(null);
     setJustCalculated(false);
@@ -331,16 +333,37 @@ export const AdminPerhitunganSMART: React.FC = () => {
   };
 
   const handleDeleteHistory = async (id?: string) => {
-    if (deletingHistory || isProcessing) return;
-    const message = id ? 'Hapus seluruh hasil dan langkah perhitungan pada riwayat ini?' : 'Hapus SEMUA riwayat perhitungan SMART beserta seluruh hasilnya? Data master mahasiswa dan akun tetap disimpan.';
+    if (deletingHistory || isProcessing || trashBusy) return;
+    const message = id ? 'Pindahkan riwayat ini ke Tempat Sampah? Jika ini riwayat terakhir, mahasiswa PKL, nilai, dan peringkat juga dipindahkan. Data bisa dipulihkan dari Riwayat Hapus.' : 'Pindahkan SEMUA riwayat SMART, mahasiswa PKL, nilai C1/C2/C3, dan peringkat ke Tempat Sampah? Tampilan aktif akan kosong. Data dapat dipulihkan dari Riwayat Hapus; akun, kriteria, dan periode tetap disimpan.';
     if (!window.confirm(message)) return;
     setDeletingHistory(true);
     try {
-      const removed = await smartHistoryService.remove(id);
-      setHistory(previous => (previous ?? []).filter(row => !removed.includes(row.id)));
-      if (!id || (selectedRunId && removed.includes(selectedRunId))) setSelectedRunId(undefined);
-      setNotification({ type: 'success', message: `${removed.length} riwayat perhitungan berhasil dihapus dari Supabase.` });
-      await refetchHistory();
+      if (!id) {
+        const removed = await smartHistoryService.clearAll();
+        setHistory([]);
+        setMahasiswaList([]);
+        setSelectedRunId(undefined);
+        setExcelReady(false);
+        setExcelParsedData(null);
+        setExcelFile(null);
+        setIsExcelModalOpen(false);
+        setHistoryView(false);
+        setHistoryPage(1);
+        setActiveStep(4);
+        setNotification({ type: 'success', message: `${removed.history} riwayat, ${removed.students} mahasiswa PKL, dan seluruh nilai serta peringkat dipindahkan ke Tempat Sampah. Unggah Excel dan tekan Proses Perhitungan untuk mengisi data baru.` });
+        await Promise.all([refetchHistory(), refetchMhs()]);
+      } else {
+        const removed = await smartHistoryService.remove(id);
+        setHistory(previous => (previous ?? []).filter(row => row.id !== id));
+        if (selectedRunId === id || removed.cleared_all) setSelectedRunId(undefined);
+        if (removed.cleared_all) {
+          setMahasiswaList([]);
+          setExcelReady(false); setExcelParsedData(null); setExcelFile(null);
+          setIsExcelModalOpen(false); setHistoryView(false); setHistoryPage(1);
+        }
+        setNotification({ type: 'success', message: removed.cleared_all ? 'Riwayat terakhir, mahasiswa PKL, nilai, dan peringkat dipindahkan ke Tempat Sampah. Unggah dan proses Excel untuk mengisi data baru.' : 'Riwayat perhitungan dipindahkan ke Tempat Sampah Supabase.' });
+        await Promise.all([refetchHistory(), refetchMhs()]);
+      }
     } catch (error) {
       setNotification({ type: 'error', message: error instanceof Error ? error.message : 'Gagal menghapus riwayat.' });
     } finally { setDeletingHistory(false); }
@@ -457,19 +480,21 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
       <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3" aria-label="Riwayat perhitungan SMART">
         <div className="flex flex-wrap justify-between items-center gap-3">
-          <div><h2 className="font-bold text-sm">Hasil &amp; Riwayat Perhitungan</h2><p className="text-xs text-slate-500 mt-1">{history?.length ?? 0} proses tersimpan di Supabase. Setiap proses menyimpan nilai, bobot, utilitas, dan peringkat saat itu.</p></div>
+          <div><h2 className="font-bold text-sm">Hasil &amp; Riwayat Perhitungan</h2><p className="text-xs text-slate-500 mt-1">{history?.length ?? 0} proses tersimpan di Supabase. Setiap proses menyimpan nilai, bobot, utilitas, dan peringkat saat itu. Hapus Semua Data SMART memindahkan mahasiswa, nilai, peringkat, dan riwayat ke Tempat Sampah.</p></div>
           <div className="flex flex-wrap gap-2">
-            <button disabled={isProcessing || deletingHistory} onClick={() => { setSelectedRunId(undefined); setHistoryView(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); setActiveStep(4); }} className={`px-3 py-2 text-xs rounded-lg border ${!historyView ? 'border-blue-500 text-blue-600' : 'border-slate-200'}`}>Hasil Terbaru</button>
-            <button disabled={isProcessing || deletingHistory} onClick={() => setHistoryView(true)} className={`px-3 py-2 text-xs rounded-lg border ${historyView ? 'border-blue-500 text-blue-600' : 'border-slate-200'}`}>Riwayat ({history?.length ?? 0})</button>
-            <button disabled={!history?.length || isProcessing || deletingHistory} onClick={() => handleDeleteHistory()} className="px-3 py-2 text-xs rounded-lg border border-red-200 text-red-600 disabled:opacity-40 flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" />{deletingHistory ? 'Menghapus...' : 'Hapus Semua Riwayat'}</button>
+            <button disabled={isProcessing || deletingHistory || trashBusy} onClick={() => { setSelectedRunId(undefined); setHistoryView(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); setActiveStep(4); }} className={`px-3 py-2 text-xs rounded-lg border ${!historyView ? 'border-blue-500 text-blue-600' : 'border-slate-200'}`}>Hasil Terbaru</button>
+            <button disabled={isProcessing || deletingHistory || trashBusy} onClick={() => setHistoryView(true)} className={`px-3 py-2 text-xs rounded-lg border ${historyView ? 'border-blue-500 text-blue-600' : 'border-slate-200'}`}>Riwayat ({history?.length ?? 0})</button>
+            <button disabled={(!history?.length && !mahasiswaList?.length) || isProcessing || deletingHistory || trashBusy} onClick={() => handleDeleteHistory()} className="px-3 py-2 text-xs rounded-lg border border-red-200 text-red-600 disabled:opacity-40 flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" />{deletingHistory ? 'Menghapus...' : 'Hapus Semua Data SMART'}</button>
           </div>
         </div>
-        {currentRun && !historyView && <div className="text-xs rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3 flex flex-wrap justify-between items-center gap-2"><span><strong>{currentRun.source}</strong> / {currentRun.periode} / {new Date(currentRun.created_at).toLocaleString('id-ID')} / {currentRun.result.ranking.length} mahasiswa</span><button disabled={isProcessing || deletingHistory} className="text-red-600 font-semibold" onClick={() => handleDeleteHistory(currentRun.id)}>Hapus Hasil Ini</button></div>}
+        {currentRun && !historyView && <div className="text-xs rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3 flex flex-wrap justify-between items-center gap-2"><span><strong>{currentRun.source}</strong> / {currentRun.periode} / {new Date(currentRun.created_at).toLocaleString('id-ID')} / {currentRun.result.ranking.length} mahasiswa</span><button disabled={isProcessing || deletingHistory || trashBusy} className="text-red-600 font-semibold" onClick={() => handleDeleteHistory(currentRun.id)}>Hapus Hasil Ini</button></div>}
         {historyView && <>
-          <div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead><tr className="bg-slate-50 dark:bg-slate-800"><th className="p-3">Waktu Proses</th><th className="p-3">Sumber / Periode</th><th className="p-3">Mahasiswa</th><th className="p-3">Aksi</th></tr></thead><tbody>{(history ?? []).slice((visibleHistoryPage - 1) * 5, visibleHistoryPage * 5).map(run => <tr key={run.id} className="border-t border-slate-200 dark:border-slate-800"><td className="p-3 whitespace-nowrap">{new Date(run.created_at).toLocaleString('id-ID')}</td><td className="p-3"><strong>{run.source}</strong><p className="text-slate-500 mt-1">{run.periode}</p></td><td className="p-3">{run.result.ranking.length}</td><td className="p-3"><div className="flex gap-3"><button disabled={isProcessing || deletingHistory} className="text-blue-600 font-semibold" onClick={() => { setSelectedRunId(run.id); setHistoryView(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); setActiveStep(4); }}>Buka Hasil</button><button disabled={isProcessing || deletingHistory} className="text-red-600" onClick={() => handleDeleteHistory(run.id)}>Hapus</button></div></td></tr>)}</tbody></table>{!history?.length && <p className="text-center text-slate-500 py-6">Belum ada riwayat tersimpan.</p>}</div>
+          <div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead><tr className="bg-slate-50 dark:bg-slate-800"><th className="p-3">Waktu Proses</th><th className="p-3">Sumber / Periode</th><th className="p-3">Mahasiswa</th><th className="p-3">Aksi</th></tr></thead><tbody>{(history ?? []).slice((visibleHistoryPage - 1) * 5, visibleHistoryPage * 5).map(run => <tr key={run.id} className="border-t border-slate-200 dark:border-slate-800"><td className="p-3 whitespace-nowrap">{new Date(run.created_at).toLocaleString('id-ID')}</td><td className="p-3"><strong>{run.source}</strong><p className="text-slate-500 mt-1">{run.periode}</p></td><td className="p-3">{run.result.ranking.length}</td><td className="p-3"><div className="flex gap-3"><button disabled={isProcessing || deletingHistory || trashBusy} className="text-blue-600 font-semibold" onClick={() => { setSelectedRunId(run.id); setHistoryView(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); setActiveStep(4); }}>Buka Hasil</button><button disabled={isProcessing || deletingHistory || trashBusy} className="text-red-600" onClick={() => handleDeleteHistory(run.id)}>Hapus</button></div></td></tr>)}</tbody></table>{!history?.length && <p className="text-center text-slate-500 py-6">Belum ada riwayat tersimpan.</p>}</div>
           <div className="flex justify-between items-center text-xs"><span>Halaman {visibleHistoryPage} dari {totalHistoryPages}</span><div className="flex gap-3"><button disabled={visibleHistoryPage <= 1} onClick={() => setHistoryPage(visibleHistoryPage - 1)}>Sebelumnya</button><button disabled={visibleHistoryPage >= totalHistoryPages} onClick={() => setHistoryPage(visibleHistoryPage + 1)}>Selanjutnya</button></div></div>
         </>}
       </section>
+
+      <SmartTrashPanel disabled={isProcessing || deletingHistory} onBusy={setTrashBusy} onChanged={async () => { await Promise.all([refetchHistory(), refetchMhs()]); setSelectedRunId(undefined); }} />
 
       {excelReady && excelParsedData && <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div><p className="font-bold text-blue-800 dark:text-blue-200">{excelParsedData.length} mahasiswa siap diproses dari {excelFile?.name}</p><p className="mt-1 text-slate-600 dark:text-slate-300">Mode: {replaceMode ? 'Ganti seluruh data' : 'Gabungkan dan perbarui'}. Data belum disimpan. Tekan tombol biru Proses Perhitungan pada panel Langkah Perhitungan SMART.</p></div>
@@ -594,7 +619,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
             <button
               onClick={handleRunCalculation}
-              disabled={isProcessing || deletingHistory || isParsingExcel || isLoading || !selectedPeriode || !kriteriaList?.some(k => k.aktif) || (!!excelParsedData && !excelReady)}
+              disabled={isProcessing || deletingHistory || trashBusy || isParsingExcel || isLoading || !selectedPeriode || !kriteriaList?.some(k => k.aktif) || (!!excelParsedData && !excelReady)}
               className={`mt-5 w-full py-2.5 text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 ${
                 justCalculated
                   ? 'bg-emerald-600 text-white'

@@ -32,6 +32,12 @@ globalThis.testDatabase = {
   async rpc(name, args) {
     calls.push({ name, args });
     if (failure) return { error: failure };
+    if (name === 'trash_mahasiswa_pkl') {
+      const found = rows.find(row => row.id === args.p_student_id);
+      if (!found) return {error:{message:'Mahasiswa tidak ditemukan'}};
+      rows = rows.filter(row => row.id !== args.p_student_id);
+      return {data:'trash-entry-id'};
+    }
     if (args.p_replace) rows = [];
     for (const item of args.p_rows) {
       const index = rows.findIndex((row) => row.id === item.id);
