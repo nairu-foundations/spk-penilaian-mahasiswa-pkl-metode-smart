@@ -95,7 +95,8 @@ export const authService = {
   },
 
   async getAuditLogs(): Promise<AuditLog[]> {
-    return readRows('audit_logs', 'waktu').then((rows) => (rows as AuditLog[]).reverse());
+    const { data, error } = await database().from('audit_logs').select('*').order('visible_since', { ascending: false }).order('waktu', { ascending: false }).order('id', { ascending: false }).limit(20);
+    checkError(error); return data ?? [];
   },
 
   async recordAuditLog(_aktor: string, _role: Role, aksi: string, rincian: string): Promise<void> {

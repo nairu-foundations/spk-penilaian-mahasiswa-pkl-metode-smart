@@ -82,6 +82,5 @@ export const mahasiswaService = {
     if (error) throw databaseError(error.message);
     if (!data) throw new Error('Mahasiswa tidak dipindahkan ke Tempat Sampah. Periksa izin database atau muat ulang data.');
     notifyMutation('Data mahasiswa dipindahkan ke Tempat Sampah Supabase.');
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('spk:refresh'));
-  },
+    },
 };

@@ -26,7 +26,6 @@ export function decodeSmartRun(row: StoredRun): SmartRun {
 export interface SmartClearResult { history: number; students: number; scores: number; cleared_all: boolean; trash_id?: string | null }
 const notifyClear = () => {
   notifyMutation('Data SMART dipindahkan ke Tempat Sampah Supabase.');
-  if (typeof window !== 'undefined') window.dispatchEvent(new Event('spk:refresh'));
 };
 const validateClear = (data: SmartClearResult) => {
   if (!data || typeof data.cleared_all !== 'boolean' || !(['history', 'students', 'scores'] as const).every(key => Number.isInteger(data[key]) && data[key] >= 0)) throw new Error('Supabase belum mengonfirmasi penghapusan data SMART.');

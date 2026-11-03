@@ -72,8 +72,8 @@ BEGIN
 
   -- Historical signed certificates retain their snapshots; detach their optional FK.
   UPDATE public.pengesahan_sk_juara SET mahasiswa_id = NULL WHERE mahasiswa_id IS NOT NULL;
-  DELETE FROM public.penilaian_mahasiswa;
-  DELETE FROM public.mahasiswa_pkl;
+  DELETE FROM public.penilaian_mahasiswa WHERE id IS NOT NULL;
+  DELETE FROM public.mahasiswa_pkl WHERE id IS NOT NULL;
   GET DIAGNOSTICS removed_students = ROW_COUNT;
   DELETE FROM public.hasil_perhitungan
     WHERE left(coalesce(catatan, ''), length('SMART_MAHASISWA_V1:')) = 'SMART_MAHASISWA_V1:';

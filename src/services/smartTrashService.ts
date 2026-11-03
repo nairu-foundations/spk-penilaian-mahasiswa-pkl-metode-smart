@@ -22,8 +22,7 @@ export const smartTrashService = {
     checkError(error);
     if (!data || !Number.isInteger(data.students) || !Number.isInteger(data.history) || data.students < 0 || data.history < 0) throw new Error('Pemulihan belum dikonfirmasi oleh Supabase.');
     notifyMutation('Data berhasil dipulihkan dari Tempat Sampah.');
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('spk:refresh'));
-    return data;
+      return data;
   },
   async purge(id: string): Promise<void> {
     const { data, error } = await database().rpc('purge_smart_trash', { p_trash_id: id });

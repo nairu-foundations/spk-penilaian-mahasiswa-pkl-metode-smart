@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { useQuery } from '../../hooks/useData';
+import { AuditLogHistory } from '../../components/admin/AuditLogHistory';
 import { usePeriode } from '../../hooks/usePeriode';
 
 export const AdminAuditLog: React.FC = () => {
@@ -100,7 +101,7 @@ export const AdminAuditLog: React.FC = () => {
                 Pengawasan Operasional HRD
               </h3>
               <p className="text-xs text-slate-500">
-                Admin HRD aktif: Siti Rahma, S.Psi.
+                Aktivitas HRD dicatat otomatis melalui Supabase
               </p>
             </div>
           </div>
@@ -110,47 +111,7 @@ export const AdminAuditLog: React.FC = () => {
         </div>
       </div>
 
-      {/* Audit Logs Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <History className="w-4 h-4 text-slate-500" />
-            <span>Riwayat Aktivitas &amp; Integritas Penilaian (Audit Trail)</span>
-          </h3>
-          <span className="text-xs text-slate-500">{(logs ?? []).length} catatan aktivitas tercatat</span>
-        </div>
-
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {(logs ?? []).map((log) => (
-            <div key={log.id} className="p-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                      log.role === 'super_admin'
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
-                    }`}
-                  >
-                    {log.role === 'super_admin' ? 'SUPER ADMIN' : 'ADMIN HRD'}
-                  </span>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {log.aktor}
-                  </span>
-                  <span className="text-slate-400">·</span>
-                  <span className="font-medium text-blue-600 dark:text-blue-400">
-                    {log.aksi}
-                  </span>
-                </div>
-                <span className="text-slate-400 text-[11px] tabular-nums">{log.waktu}</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
-                {log.rincian}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <AuditLogHistory logs={logs ?? []} onChanged={refetch} />
     </div>
   );
 };
