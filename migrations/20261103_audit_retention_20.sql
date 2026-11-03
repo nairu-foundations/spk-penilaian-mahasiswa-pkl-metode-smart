@@ -1,4 +1,4 @@
-﻿-- Keep exactly the latest 20 active audit records. Overflow remains recoverable.
+-- Keep exactly the latest 20 active audit records. Overflow remains recoverable.
 BEGIN;
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS visible_since timestamptz;
 UPDATE public.audit_logs SET visible_since=waktu WHERE visible_since IS NULL;
