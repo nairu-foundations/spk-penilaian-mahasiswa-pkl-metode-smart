@@ -15,17 +15,11 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from 'recharts';
 import { useQuery } from '../../hooks/useData';
 import { authService } from '../../services/authService';
@@ -33,6 +27,7 @@ import { spkService } from '../../services/spkService';
 import { useAuth } from '../../context/AuthContext';
 import { Skeleton } from '../../components/common/Skeleton';
 import { distribusiPeringkat } from '../../utils/dashboardStats';
+import { CriterionStatistics } from '../../components/admin/CriterionStatistics';
 import { rentangPeriode } from '../../utils/periode';
 
 export const AdminDashboard: React.FC = () => {
@@ -54,11 +49,6 @@ export const AdminDashboard: React.FC = () => {
   const sudahDinilai = distribution.evaluated;
   const belumDinilai = totalMahasiswa - sudahDinilai;
 
-  const average = (code: string) => {
-    const scores = (mahasiswaList ?? []).flatMap(m => m.nilai_kriteria?.[code] === undefined ? [] : [Number(m.nilai_kriteria[code])]);
-    return scores.length ? Number((scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2)) : 0;
-  };
-  const lineData = [{ name: 'Saat ini', Kehadiran: average('C1'), KetepatanWaktu: average('C2'), Tugas: average('C3') }];
   const pieData = distribution.buckets.filter(bucket => bucket.value > 0);
 
   if (isLoading) {
@@ -184,59 +174,8 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Line Chart: Nilai Rata-rata per Kriteria over weeks */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Nilai Rata-rata Saat Ini per Kriteria SMART
-              </h3>
-              <p className="text-xs text-slate-500">
-                Rata-rata nilai yang tersimpan saat ini di Supabase
-              </p>
-            </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              Skala 0–100
-            </span>
-          </div>
-
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={lineData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                <Line
-                  type="monotone"
-                  dataKey="Kehadiran"
-                  name="C1 - Kehadiran (30%)"
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  dot={{ r: 4 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="KetepatanWaktu"
-                  name="C2 - Ketepatan Waktu (20%)"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  dot={{ r: 4 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="Tugas"
-                  name="C3 - Penyelesaian Tugas (50%)"
-                  stroke="#f59e0b"
-                  strokeWidth={2.5}
-                  dot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <CriterionStatistics students={mahasiswaList ?? []} criteria={kriteriaList ?? []} periods={periodeList ?? []} />
 
         {/* Donut Chart: Distribusi Peringkat */}
         <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
