@@ -17,6 +17,7 @@ import { MahasiswaPKL } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
 import { Skeleton } from '../../components/common/Skeleton';
+import { usePeriode } from '../../hooks/usePeriode';
 
 export const AdminMahasiswa: React.FC = () => {
   const { isSuperAdmin } = useAuth();
@@ -25,6 +26,7 @@ export const AdminMahasiswa: React.FC = () => {
   const [filterBagian, setFilterBagian] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+  const { periodeList, periodeAktif, error: periodeError } = usePeriode();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MahasiswaPKL | null>(null);
   const [migrating, setMigrating] = useState(false);
@@ -50,7 +52,7 @@ export const AdminMahasiswa: React.FC = () => {
   const [formNim, setFormNim] = useState('');
   const [formInstitusi, setFormInstitusi] = useState('');
   const [formBagian, setFormBagian] = useState('IT / Software Engineering');
-  const [formPeriode, setFormPeriode] = useState('Periode 1 - 2025');
+  const [formPeriode, setFormPeriode] = useState('');
   const [formNoHp, setFormNoHp] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formStatus, setFormStatus] = useState<'Aktif' | 'Selesai' | 'Menunggu Verifikasi'>('Aktif');
@@ -61,7 +63,7 @@ export const AdminMahasiswa: React.FC = () => {
     setFormNim('');
     setFormInstitusi('');
     setFormBagian('IT / Software Engineering');
-    setFormPeriode('Periode 1 - 2025');
+    setFormPeriode(periodeAktif?.nama_periode ?? periodeList[0]?.nama_periode ?? '');
     setFormNoHp('');
     setFormEmail('');
     setFormStatus('Aktif');
@@ -74,7 +76,7 @@ export const AdminMahasiswa: React.FC = () => {
     setFormNim(mhs.nim);
     setFormInstitusi(mhs.institusi || '');
     setFormBagian(mhs.bagian || 'IT / Software Engineering');
-    setFormPeriode(mhs.periode || 'Periode 1 - 2025');
+    setFormPeriode(mhs.periode || periodeAktif?.nama_periode || '');
     setFormNoHp(mhs.no_hp || '');
     setFormEmail(mhs.email || '');
     setFormStatus(mhs.status || 'Aktif');
@@ -85,6 +87,8 @@ export const AdminMahasiswa: React.FC = () => {
     try {
       e.preventDefault();
       if (!formNama.trim() || !formEmail.trim()) return;
+      const period = periodeList.find(item => item.nama_periode === formPeriode);
+      if (!period) throw new Error('Pilih periode PKL yang tersedia.');
 
       await authService.saveMahasiswaPKL({
         id: editingItem?.id || `mhs-${Date.now()}`,
@@ -94,8 +98,8 @@ export const AdminMahasiswa: React.FC = () => {
         institusi: formInstitusi.trim() || 'Universitas Mitra',
         bagian: formBagian,
         periode: formPeriode,
-        tanggal_mulai: editingItem?.tanggal_mulai || '2025-01-01',
-        tanggal_selesai: editingItem?.tanggal_selesai || '2025-06-30',
+        tanggal_mulai: period.tanggal_mulai,
+        tanggal_selesai: period.tanggal_selesai,
         no_hp: formNoHp.trim() || '0812-3456-7890',
         status: formStatus,
         skor_akhir_smart: editingItem?.skor_akhir_smart,
@@ -195,6 +199,7 @@ export const AdminMahasiswa: React.FC = () => {
   return (
     <div className="space-y-6">
       {mahasiswaError && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError}</div>}
+      {periodeError && <div role="alert" className="text-red-700 text-sm">{periodeError}</div>}
       <div className="p-3 rounded-lg bg-blue-50 text-blue-900 text-sm flex flex-wrap items-center gap-3">
         <span>Data lama hanya ada di browser sebelumnya? Salin sekali agar tersedia di perangkat lain.</span>
         <button type="button" disabled={migrating} onClick={handleMigrateLocal} className="font-semibold underline disabled:opacity-50">
@@ -340,7 +345,7 @@ export const AdminMahasiswa: React.FC = () => {
                       {mhs.institusi || 'Kampus Mitra'}
                     </td>
                     <td className="py-3 px-4 text-slate-500 text-xs">
-                      {mhs.periode || '1 Jan - 30 Jun 2025'}
+                      {mhs.periode || 'Belum dipilih'}
                     </td>
                     <td className="py-3 px-4 text-center">
                       {mhs.skor_akhir_smart ? (
@@ -476,9 +481,8 @@ export const AdminMahasiswa: React.FC = () => {
                 onChange={(e) => setFormPeriode(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               >
-                <option value="Periode 1 - 2025">Periode 1 - 2025 (Aktif)</option>
-                <option value="Periode 2 - 2025">Periode 2 - 2025</option>
-                <option value="Periode 1 - 2024">Periode 1 - 2024</option>
+                <option value="" disabled>Pilih periode PKL</option>
+                {periodeList.map(period => <option key={period.id} value={period.nama_periode}>{period.nama_periode}{period.status === 'Aktif' ? ' (Aktif)' : ''}</option>)}
               </select>
             </div>
           </div>

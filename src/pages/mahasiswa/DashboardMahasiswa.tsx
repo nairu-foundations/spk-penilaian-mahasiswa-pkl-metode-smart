@@ -18,10 +18,13 @@ import { spkService } from '../../services/spkService';
 import { jalankanSMARTMahasiswa } from '../../utils/smart';
 import { Skeleton } from '../../components/common/Skeleton';
 import { useNavigate } from 'react-router-dom';
+import { usePeriode } from '../../hooks/usePeriode';
+import { rentangPeriode } from '../../utils/periode';
 
 export const DashboardMahasiswa: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { selectedPeriode, selectedPeriod } = usePeriode();
 
   const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs } = useQuery(() =>
     authService.getMahasiswaPKLList()
@@ -182,7 +185,7 @@ export const DashboardMahasiswa: React.FC = () => {
               <span>Status Magang Aktif</span>
             </h3>
             <p className="text-xs text-slate-500 mt-1">
-              Program Magang PKL Periode 1 - 2025
+              Program Magang PKL {selectedPeriode}
             </p>
           </div>
 
@@ -208,7 +211,7 @@ export const DashboardMahasiswa: React.FC = () => {
                 <Clock className="w-3.5 h-3.5 text-blue-500" />
                 <span>Waktu Pelaksanaan</span>
               </span>
-              <span className="font-semibold text-slate-900 dark:text-white">Jan - Jun 2025</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{rentangPeriode(selectedPeriod)}</span>
             </div>
           </div>
 

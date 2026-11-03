@@ -28,6 +28,7 @@ import { jalankanSMARTMahasiswa, SMARTMahasiswaResult } from '../../utils/smart'
 import { Skeleton } from '../../components/common/Skeleton';
 import { Modal } from '../../components/common/Modal';
 import { MahasiswaPKL } from '../../types';
+import { usePeriode } from '../../hooks/usePeriode';
 import {
   unduhTemplateExcelSMART,
   bacaFileExcelMahasiswa,
@@ -35,6 +36,7 @@ import {
 } from '../../utils/excelHelper';
 
 export const AdminPerhitunganSMART: React.FC = () => {
+  const { selectedPeriod, selectedPeriode, periodeList } = usePeriode();
   const { error: mahasiswaError,
     data: mahasiswaList,
     loading: loadingMhs,
@@ -77,7 +79,8 @@ export const AdminPerhitunganSMART: React.FC = () => {
     if (!file) return;
     setIsParsingExcel(true);
     try {
-      const parsed = await bacaFileExcelMahasiswa(file);
+      if (!selectedPeriod) throw new Error('Periode PKL belum tersedia.');
+      const parsed = await bacaFileExcelMahasiswa(file, selectedPeriod, periodeList);
       setExcelFile(file);
       setExcelParsedData(parsed);
       setIsExcelModalOpen(true);
@@ -129,7 +132,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
       alert('Belum ada data perhitungan SMART untuk diekspor.');
       return;
     }
-    eksporHasilSMARTKeExcel(calculationResult.ranking, 'Periode 1 - 2025');
+    eksporHasilSMARTKeExcel(calculationResult.ranking, selectedPeriode);
   };
 
   const isLoading = loadingMhs || loadingKrit;
@@ -244,6 +247,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
           },
         };
       } else {
+        if (!selectedPeriod) throw new Error('Periode PKL belum tersedia.');
         const codeIndex = (mahasiswaList?.length || 5) + 1;
         targetStudent = {
           id: `mhs-${Date.now()}`,
@@ -252,11 +256,11 @@ export const AdminPerhitunganSMART: React.FC = () => {
           nim: `2024100${codeIndex}`,
           institusi: formInstitusi.trim(),
           bagian: formBagian.trim(),
-          periode: 'Periode 1 - 2025',
+          periode: selectedPeriode,
           kode_alternatif: `A${codeIndex}`,
           status: 'Aktif',
-          tanggal_mulai: '2025-01-01',
-          tanggal_selesai: '2025-06-30',
+          tanggal_mulai: selectedPeriod.tanggal_mulai,
+          tanggal_selesai: selectedPeriod.tanggal_selesai,
           no_hp: '081234567890',
           nilai_kriteria: {
             C1: c1,

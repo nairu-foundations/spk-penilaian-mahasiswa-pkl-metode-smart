@@ -11,15 +11,18 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { useQuery } from '../../hooks/useData';
+import { usePeriode } from '../../hooks/usePeriode';
 
 export const AdminAuditLog: React.FC = () => {
   const { isSuperAdmin } = useAuth();
+  const { periodeAktif } = usePeriode();
   const { data: logs = [], error, refetch } = useQuery(() => authService.getAuditLogs());
   const [certifiedNotice, setCertifiedNotice] = useState(false);
 
   const handleFounderCertification = async () => {
     try {
-      await authService.certifyRanking('Periode 1 - 2025');
+      if (!periodeAktif) throw new Error('Belum ada periode PKL aktif.');
+      await authService.certifyRanking(periodeAktif.nama_periode);
       await refetch();
       setCertifiedNotice(true);
       setTimeout(() => setCertifiedNotice(false), 3500);

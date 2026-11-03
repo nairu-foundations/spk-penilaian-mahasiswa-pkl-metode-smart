@@ -16,6 +16,7 @@ import { spkService } from '../../services/spkService';
 import { jalankanSMARTMahasiswa } from '../../utils/smart';
 import { useAuth } from '../../context/AuthContext';
 import { Skeleton } from '../../components/common/Skeleton';
+import { usePeriode } from '../../hooks/usePeriode';
 
 export const AdminHasilPeringkat: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -24,7 +25,7 @@ export const AdminHasilPeringkat: React.FC = () => {
   );
   const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
-  const [selectedPeriode, setSelectedPeriode] = useState('Periode 1 - 2025');
+  const { periodeList, selectedPeriode, setSelectedPeriode } = usePeriode();
   const [esahanSuccess, setEsahanSuccess] = useState(false);
 
   const isLoading = loadingMhs || loadingKrit;
@@ -34,13 +35,13 @@ export const AdminHasilPeringkat: React.FC = () => {
     if (!mahasiswaList || !kriteriaList) return null;
     try {
       return jalankanSMARTMahasiswa({
-        mahasiswaList,
+        mahasiswaList: mahasiswaList.filter(student => student.periode === selectedPeriode),
         kriteriaList,
       });
     } catch {
       return null;
     }
-  }, [mahasiswaList, kriteriaList]);
+  }, [mahasiswaList, kriteriaList, selectedPeriode]);
 
   const top1 = smartResult?.ranking[0];
 
@@ -199,9 +200,7 @@ export const AdminHasilPeringkat: React.FC = () => {
             onChange={(e) => setSelectedPeriode(e.target.value)}
             className="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
           >
-            <option value="Periode 1 - 2025">Periode 1 - 2025 (Aktif)</option>
-            <option value="Periode 2 - 2025">Periode 2 - 2025</option>
-            <option value="Periode 1 - 2024">Periode 1 - 2024</option>
+            {periodeList.map(period => <option key={period.id} value={period.nama_periode}>{period.nama_periode}{period.status === 'Aktif' ? ' (Aktif)' : ''}</option>)}
           </select>
         </div>
 

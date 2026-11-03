@@ -2,6 +2,7 @@ import { Alternatif, HasilPerhitungan, HasilDetail, Kriteria, NilaiAlternatif, P
 import { database, checkError, readRows, saveRow, deleteRow } from '../lib/database';
 import { INITIAL_KRITERIA } from './initialData';
 import { notifyMutation } from '../lib/mutationFeedback';
+import { akhirSatuBulan } from '../utils/periode';
 
 export const spkService = {
   async getKriteria(): Promise<Kriteria[]> { return readRows('kriteria_smart', 'urutan'); },
@@ -29,7 +30,11 @@ export const spkService = {
     notifyMutation();
   },
   async getPeriode(): Promise<PeriodePKL[]> { return readRows('periode_pkl', 'tanggal_mulai'); },
-  async savePeriode(row: PeriodePKL): Promise<PeriodePKL> { return saveRow('periode_pkl', row); },
+  async savePeriode(row: PeriodePKL): Promise<PeriodePKL> {
+    const end = akhirSatuBulan(row.tanggal_mulai);
+    if (!end || row.tanggal_selesai !== end) throw new Error('Durasi periode PKL harus tepat satu bulan. Periksa tanggal mulai dan selesai.');
+    return saveRow('periode_pkl', row);
+  },
   async simpanHasil({ userId, bobotSnapshot, ranking, catatan }: {
     userId: string; bobotSnapshot: Record<string, number>; ranking: HasilDetail[]; catatan?: string;
   }): Promise<HasilPerhitungan> {

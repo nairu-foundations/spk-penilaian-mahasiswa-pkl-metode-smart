@@ -23,6 +23,8 @@ import { jalankanSMARTMahasiswa } from '../utils/smart';
 import { Skeleton } from '../components/common/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { MahasiswaPKL } from '../types';
+import { usePeriode } from '../hooks/usePeriode';
+import { rentangPeriode } from '../utils/periode';
 
 export const LandingPage: React.FC = () => {
   const { isMahasiswa, isAdminHRD, isSuperAdmin } = useAuth();
@@ -35,7 +37,7 @@ export const LandingPage: React.FC = () => {
 
   const { data: hero } = useQuery(() => contentService.getHero());
 
-  const [selectedPeriode] = useState('Periode 1 - 2025');
+  const { selectedPeriode, selectedPeriod } = usePeriode();
 
   // Input Data ke Perhitungan SMART Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,13 +58,13 @@ export const LandingPage: React.FC = () => {
     if (!mahasiswaList || !kriteriaList) return null;
     try {
       return jalankanSMARTMahasiswa({
-        mahasiswaList,
+        mahasiswaList: mahasiswaList.filter(student => student.periode === selectedPeriode),
         kriteriaList,
       });
     } catch {
       return null;
     }
-  }, [mahasiswaList, kriteriaList]);
+  }, [mahasiswaList, kriteriaList, selectedPeriode]);
 
   const top1 = smartResult?.ranking[0];
 
@@ -182,6 +184,7 @@ export const LandingPage: React.FC = () => {
           nilai_kriteria: { C1: c1, C2: c2, C3: c3 },
         };
       } else {
+        if (!selectedPeriod) throw new Error('Periode PKL belum tersedia.');
         const codeIndex = (mahasiswaList?.length ?? 0) + 1;
         targetStudent = {
           id: `mhs-${Date.now()}`,
@@ -190,11 +193,11 @@ export const LandingPage: React.FC = () => {
           nim: `2024100${codeIndex}`,
           institusi: formInstitusi.trim(),
           bagian: formBagian.trim(),
-          periode: 'Periode 1 - 2025',
+          periode: selectedPeriode,
           kode_alternatif: `A${codeIndex}`,
           status: 'Aktif',
-          tanggal_mulai: '2025-01-01',
-          tanggal_selesai: '2025-06-30',
+          tanggal_mulai: selectedPeriod.tanggal_mulai,
+          tanggal_selesai: selectedPeriod.tanggal_selesai,
           no_hp: '081234567890',
           nilai_kriteria: { C1: c1, C2: c2, C3: c3 },
         };
@@ -298,7 +301,7 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div className="mt-8 pt-6 border-t border-slate-800 max-w-xl mx-auto flex items-center justify-center gap-6 text-xs text-slate-400 font-mono">
-            <span>Periode: 1 Jan - 30 Jun 2025</span>
+            <span>Periode: {rentangPeriode(selectedPeriod)} (1 bulan)</span>
             <span aria-hidden="true">&middot;</span>
             <span>Total: {mahasiswaList?.length ?? 0} Mahasiswa Aktif</span>
             <span aria-hidden="true">&middot;</span>
@@ -332,7 +335,7 @@ export const LandingPage: React.FC = () => {
               Hasil &amp; Peringkat Mahasiswa PKL
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Rekapitulasi skor SMART dan peringkat resmi mahasiswa Periode 1 - 2025 ({mahasiswaList?.length ?? 0} Alternatif)
+              Rekapitulasi skor SMART dan peringkat resmi mahasiswa {selectedPeriode} ({smartResult?.ranking.length ?? 0} Alternatif)
             </p>
           </div>
 
@@ -437,7 +440,7 @@ export const LandingPage: React.FC = () => {
             <span className="font-semibold text-slate-700 dark:text-slate-300">
               Tabel Peringkat Mahasiswa Peserta PKL PT Seven Inc.
             </span>
-            <span className="font-mono">Periode 1 - 2025</span>
+            <span className="font-mono">{selectedPeriode || 'Belum ada periode'}</span>
           </div>
 
           {isLoading ? (

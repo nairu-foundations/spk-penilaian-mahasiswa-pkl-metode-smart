@@ -6,6 +6,7 @@ import { spkService } from '../../services/spkService';
 import { jalankanSMARTMahasiswa } from '../../utils/smart';
 import { Skeleton } from '../../components/common/Skeleton';
 import { MahasiswaPKL } from '../../types';
+import { usePeriode } from '../../hooks/usePeriode';
 
 export const AdminInputPenilaian: React.FC = () => {
   const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs, refetch: refetchMhs } = useQuery(() =>
@@ -14,7 +15,7 @@ export const AdminInputPenilaian: React.FC = () => {
   const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
   const [search, setSearch] = useState('');
-  const [selectedPeriode, setSelectedPeriode] = useState('Periode 1 - 2025');
+  const { periodeList, selectedPeriode, setSelectedPeriode, error: periodeError } = usePeriode();
   const [localScores, setLocalScores] = useState<Record<string, Record<string, number>>>({});
   const [savedSuccessId, setSavedSuccessId] = useState<string | null>(null);
   const [saveAllSuccess, setSaveAllSuccess] = useState(false);
@@ -92,7 +93,7 @@ export const AdminInputPenilaian: React.FC = () => {
     try {
       if (!mahasiswaList || !kriteriaList) return;
 
-      const updates = mahasiswaList.map((mhs) => {
+      const updates = mahasiswaList.filter(mhs => mhs.periode === selectedPeriode).map((mhs) => {
         const scores = Object.fromEntries(activeKriteria.map((k) => [k.kode, getScore(mhs, k.kode)]));
         return { ...mhs, nilai_kriteria: scores };
       });
@@ -124,15 +125,15 @@ export const AdminInputPenilaian: React.FC = () => {
   };
 
   const filteredMahasiswa = (mahasiswaList || []).filter(
-    (m) =>
+    (m) => m.periode === selectedPeriode && (
       m.nama.toLowerCase().includes(search.toLowerCase()) ||
       m.email.toLowerCase().includes(search.toLowerCase()) ||
-      m.bagian.toLowerCase().includes(search.toLowerCase())
+      m.bagian.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
     <div className="space-y-6">
-      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
+      {(mahasiswaError || kriteriaError || periodeError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError || periodeError}</div>}
       {/* Header matching Mockup Screen 6 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -224,9 +225,7 @@ export const AdminInputPenilaian: React.FC = () => {
             onChange={(e) => setSelectedPeriode(e.target.value)}
             className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="Periode 1 - 2025">Periode 1 - 2025 (Aktif)</option>
-            <option value="Periode 2 - 2025">Periode 2 - 2025</option>
-            <option value="Periode 1 - 2024">Periode 1 - 2024</option>
+            {periodeList.map(period => <option key={period.id} value={period.nama_periode}>{period.nama_periode}{period.status === 'Aktif' ? ' (Aktif)' : ''}</option>)}
           </select>
         </div>
 

@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { MahasiswaPKL } from '../types';
+import { MahasiswaPKL, PeriodePKL } from '../types';
 import { SMARTMahasiswaResultItem } from './smart';
 
 export interface ExcelImportRow {
@@ -142,7 +142,7 @@ export function unduhTemplateExcelSMART(): void {
 /**
  * Parsing file Excel / CSV menjadi array data mahasiswa terstruktur
  */
-export async function bacaFileExcelMahasiswa(file: File): Promise<MahasiswaPKL[]> {
+export async function bacaFileExcelMahasiswa(file: File, defaultPeriod: PeriodePKL, periods: PeriodePKL[] = [defaultPeriod]): Promise<MahasiswaPKL[]> {
   const data = await file.arrayBuffer();
   const workbook = XLSX.read(data, { type: 'array' });
 
@@ -188,7 +188,9 @@ export async function bacaFileExcelMahasiswa(file: File): Promise<MahasiswaPKL[]
     const kodeAlt = String(findVal(['kode', 'alternatif', 'alt']) || `A${idx + 1}`).trim();
     const institusi = String(findVal(['institusi', 'kampus', 'universitas', 'asal']) || 'PT Seven Inc.').trim();
     const bagian = String(findVal(['bagian', 'divisi', 'penempatan', 'departemen']) || 'IT / Software Engineering').trim();
-    const periode = String(findVal(['periode']) || 'Periode 1 - 2025').trim();
+    const periode = String(findVal(['periode']) || defaultPeriod.nama_periode).trim();
+    const period = periods.find(item => item.nama_periode === periode);
+    if (!period) throw new Error(`Periode "${periode}" pada baris ${idx + 2} tidak terdaftar. Gunakan periode PKL yang tersedia.`);
     const noHp = String(findVal(['no_hp', 'hp', 'telepon', 'wa', 'whatsapp']) || '0812-3456-7890').trim();
 
     // Nilai Kriteria C1, C2, C3
@@ -223,8 +225,8 @@ export async function bacaFileExcelMahasiswa(file: File): Promise<MahasiswaPKL[]
       institusi,
       bagian,
       periode,
-      tanggal_mulai: '2025-01-01',
-      tanggal_selesai: '2025-06-30',
+      tanggal_mulai: period.tanggal_mulai,
+      tanggal_selesai: period.tanggal_selesai,
       no_hp: noHp,
       status: 'Aktif',
       nilai_kriteria: {
@@ -252,7 +254,7 @@ export async function bacaFileExcelMahasiswa(file: File): Promise<MahasiswaPKL[]
  */
 export function eksporHasilSMARTKeExcel(
   ranking: SMARTMahasiswaResultItem[],
-  namaPeriode = 'Periode 1 - 2025'
+  namaPeriode = 'Periode PKL 2026'
 ): void {
   const wb = XLSX.utils.book_new();
 

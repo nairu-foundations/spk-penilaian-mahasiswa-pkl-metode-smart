@@ -5,6 +5,7 @@ import { spkService } from '../../services/spkService';
 import { PeriodePKL } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { Skeleton } from '../../components/common/Skeleton';
+import { akhirSatuBulan } from '../../utils/periode';
 
 export const AdminPeriode: React.FC = () => {
   const { error, data: list, loading, refetch } = useQuery(() => spkService.getPeriode());
@@ -18,9 +19,9 @@ export const AdminPeriode: React.FC = () => {
 
   const handleOpenAdd = () => {
     setEditingItem(null);
-    setFormNama('');
-    setFormMulai('');
-    setFormSelesai('');
+    setFormNama('Periode 1 - 2026');
+    setFormMulai('2026-10-01');
+    setFormSelesai(akhirSatuBulan('2026-10-01'));
     setFormStatus('Aktif');
     setIsModalOpen(true);
   };
@@ -167,7 +168,7 @@ export const AdminPeriode: React.FC = () => {
               required
               value={formNama}
               onChange={(e) => setFormNama(e.target.value)}
-              placeholder="e.g. Periode 1 - 2025"
+              placeholder="Contoh: Periode 1 - 2026"
               className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
             />
           </div>
@@ -181,7 +182,7 @@ export const AdminPeriode: React.FC = () => {
                 type="date"
                 required
                 value={formMulai}
-                onChange={(e) => setFormMulai(e.target.value)}
+                onChange={(e) => { setFormMulai(e.target.value); setFormSelesai(akhirSatuBulan(e.target.value)); }}
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
@@ -193,11 +194,13 @@ export const AdminPeriode: React.FC = () => {
                 type="date"
                 required
                 value={formSelesai}
-                onChange={(e) => setFormSelesai(e.target.value)}
+                readOnly
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
           </div>
+
+          <p className="text-xs text-blue-600">Durasi PKL satu bulan. Tanggal selesai dihitung otomatis dari tanggal mulai.</p>
 
           <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">

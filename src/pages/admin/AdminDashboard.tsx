@@ -32,22 +32,26 @@ import { authService } from '../../services/authService';
 import { spkService } from '../../services/spkService';
 import { useAuth } from '../../context/AuthContext';
 import { Skeleton } from '../../components/common/Skeleton';
+import { distribusiPeringkat } from '../../utils/dashboardStats';
+import { rentangPeriode } from '../../utils/periode';
 
 export const AdminDashboard: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
   const { error: mahasiswaError, data: mahasiswaList, loading: loadingMhs } = useQuery(() =>
     authService.getMahasiswaPKLList()
   );
-  const { data: periodeList, loading: loadingPer } = useQuery(() =>
+  const { error: periodeError, data: periodeList, loading: loadingPer } = useQuery(() =>
     spkService.getPeriode()
   );
-  const { error: kriteriaError, data: kriteriaList } = useQuery(() => spkService.getKriteria());
+  const { error: kriteriaError, data: kriteriaList, loading: loadingKrit } = useQuery(() => spkService.getKriteria());
 
-  const isLoading = loadingMhs || loadingPer;
+  const isLoading = loadingMhs || loadingPer || loadingKrit;
 
   const totalMahasiswa = mahasiswaList?.length ?? 0;
   const periodeAktif = periodeList?.filter((p) => p.status === 'Aktif').length ?? 0;
-  const sudahDinilai = mahasiswaList?.filter((m) => Object.keys(m.nilai_kriteria ?? {}).length > 0).length ?? 0;
+  const activePeriod = periodeList?.find(period => period.status === 'Aktif');
+  const distribution = distribusiPeringkat(mahasiswaList ?? [], kriteriaList ?? []);
+  const sudahDinilai = distribution.evaluated;
   const belumDinilai = totalMahasiswa - sudahDinilai;
 
   const average = (code: string) => {
@@ -55,11 +59,7 @@ export const AdminDashboard: React.FC = () => {
     return scores.length ? Number((scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2)) : 0;
   };
   const lineData = [{ name: 'Saat ini', Kehadiran: average('C1'), KetepatanWaktu: average('C2'), Tugas: average('C3') }];
-  const pieData = [1,2,3,4,5].map((rank,index) => ({
-    name: rank === 5 ? 'Peringkat 5+' : `Peringkat ${rank}`,
-    value: (mahasiswaList ?? []).filter(m => rank === 5 ? (m.peringkat ?? 0) >= 5 : m.peringkat === rank).length,
-    color: ['#2563eb','#38bdf8','#f59e0b','#10b981','#ef4444'][index],
-  }));
+  const pieData = distribution.buckets.filter(bucket => bucket.value > 0);
 
   if (isLoading) {
     return (
@@ -80,7 +80,7 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {(mahasiswaError || kriteriaError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError}</div>}
+      {(mahasiswaError || kriteriaError || periodeError) && <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-800 text-sm">{mahasiswaError || kriteriaError || periodeError}</div>}
       {/* Title & Greeting with Role-Specific Styling */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -108,7 +108,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Periode 1 - 2025 Aktif</span>
+            <span>{activePeriod ? `${activePeriod.nama_periode} Aktif` : 'Belum ada periode aktif'}</span>
           </span>
         </div>
       </div>
@@ -126,7 +126,7 @@ export const AdminDashboard: React.FC = () => {
             </p>
             <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
-              <span>5 Aktif dihitung SMART</span>
+              <span>{sudahDinilai} mahasiswa telah dinilai lengkap</span>
             </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
@@ -143,7 +143,7 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
               {periodeAktif}
             </p>
-            <p className="text-[11px] text-slate-500 mt-1">1 Jan - 30 Jun 2025</p>
+            <p className="text-[11px] text-slate-500 mt-1">{rentangPeriode(activePeriod)}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center">
             <Calendar className="w-6 h-6" />
@@ -159,7 +159,7 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
               {sudahDinilai}
             </p>
-            <p className="text-[11px] text-emerald-600 mt-1">72% Mahasiswa Terisi</p>
+            <p className="text-[11px] text-emerald-600 mt-1">{totalMahasiswa ? Math.round(sudahDinilai / totalMahasiswa * 100) : 0}% Mahasiswa Terisi</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
             <CheckCircle2 className="w-6 h-6" />
@@ -193,11 +193,11 @@ export const AdminDashboard: React.FC = () => {
                 Nilai Rata-rata Saat Ini per Kriteria SMART
               </h3>
               <p className="text-xs text-slate-500">
-                Perkembangan performa 3 Kriteria Benefit (C1, C2, C3) selama 4 minggu
+                Rata-rata nilai yang tersimpan saat ini di Supabase
               </p>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              Bulan Ini
+              Skala 0–100
             </span>
           </div>
 
@@ -206,7 +206,7 @@ export const AdminDashboard: React.FC = () => {
               <LineChart data={lineData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis domain={[50, 100]} tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
                 <Line
@@ -249,33 +249,41 @@ export const AdminDashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="h-64 w-full relative">
+          {totalMahasiswa === 0 ? <div className="h-56 flex items-center justify-center text-sm text-slate-500">Belum ada data mahasiswa.</div> : <div className="h-56 w-full relative" role="img" aria-label={`Distribusi ${totalMahasiswa} mahasiswa: ${pieData.map(bucket => `${bucket.name} ${bucket.value}`).join(', ')}`}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={85}
-                  paddingAngle={4}
+                  innerRadius="58%"
+                  outerRadius="80%"
+                  paddingAngle={pieData.length > 1 ? 3 : 0}
                   dataKey="value"
                 >
                   {pieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                <Tooltip formatter={(value) => [`${Number(value)} mahasiswa (${(Number(value) / totalMahasiswa * 100).toFixed(1)}%)`]} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">
-                25
+                {totalMahasiswa}
               </span>
               <span className="text-[10px] text-slate-400">Mahasiswa</span>
             </div>
-          </div>
+          </div>}
+          <ul className="space-y-2 text-xs" aria-label="Rincian distribusi peringkat">
+            {distribution.buckets.map(bucket => <li key={bucket.name} className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: bucket.color }} />
+              <span className="text-slate-500 flex-1">{bucket.name}</span>
+              <span className="font-semibold tabular-nums">{bucket.value}</span>
+              <span className="w-12 text-right text-slate-400 tabular-nums">{totalMahasiswa ? (bucket.value / totalMahasiswa * 100).toFixed(0) : 0}%</span>
+            </li>)}
+          </ul>
+          <Link to="/admin/hasil-peringkat" className="mt-4 text-xs text-blue-600 font-semibold inline-flex items-center gap-1">Lihat hasil peringkat <ArrowRight size={13} /></Link>
         </div>
       </div>
 
