@@ -72,6 +72,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
   // Automated Excel Import State
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [excelParsedData, setExcelParsedData] = useState<MahasiswaPKL[] | null>(null);
+  const [excelReady, setExcelReady] = useState(false);
   const [isParsingExcel, setIsParsingExcel] = useState(false);
   const isImportingExcel = isProcessing;
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
@@ -82,6 +83,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setCompleted(null);
+    setExcelReady(false);
     setExcelParsedData(null);
     setExcelFile(null);
     setIsParsingExcel(true);
@@ -121,6 +123,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
   useEffect(() => {
     setCompleted(null);
+    setExcelReady(false);
     setExcelParsedData(null);
     setExcelFile(null);
     setIsExcelModalOpen(false);
@@ -128,7 +131,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
   }, [selectedPeriode]);
 
   const handleRunCalculation = async () => {
-    if (isProcessing || isParsingExcel || !kriteriaList || !selectedPeriode) return;
+    if (isProcessing || isParsingExcel || !kriteriaList || !selectedPeriode || (excelParsedData && !excelReady)) return;
     setIsProcessing(true);
     setNotification(null);
     setCompleted(null);
@@ -146,7 +149,8 @@ export const AdminPerhitunganSMART: React.FC = () => {
       setCompleted({ result, signature: signatureSMART(rows, kriteriaList, selectedPeriode) });
       setActiveStep(4);
       setIsExcelModalOpen(false);
-      setExcelParsedData(null);
+      setExcelReady(false);
+    setExcelParsedData(null);
       setExcelFile(null);
       setIsInlineEdit(false);
       setJustCalculated(true);
@@ -382,18 +386,18 @@ export const AdminPerhitunganSMART: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                  Otomatisasi Input File Excel &amp; Perhitungan SMART
+                  Input Data Mahasiswa dari Excel
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-emerald-600" />
-                  Unggah ? Proses ? Hasil
+                  Input Data Excel
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
                 Input Data Mahasiswa dari Berkas Excel (.xlsx / .xls / .csv)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                Unggah Excel harian seperti dataset sebelumnya: satu sheet per mahasiswa, berisi kehadiran, jam masuk, dan 4 tugas bulanan. C1, C2, dan C3 disiapkan otomatis. Tinjau data, lalu tekan Proses Perhitungan untuk menyimpan ke Supabase dan menampilkan hasil SMART.
+                Unggah Excel harian seperti dataset sebelumnya: satu sheet per mahasiswa, berisi kehadiran, jam masuk, dan 4 tugas bulanan. C1, C2, dan C3 disiapkan otomatis. Tinjau data dan pilih Gunakan Data Excel. Setelah itu, tekan tombol biru Proses Perhitungan pada panel Langkah Perhitungan SMART untuk menyimpan ke Supabase dan menampilkan hasil.
               </p>
             </div>
           </div>
@@ -426,6 +430,11 @@ export const AdminPerhitunganSMART: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {excelReady && excelParsedData && <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div><p className="font-bold text-blue-800 dark:text-blue-200">{excelParsedData.length} mahasiswa siap diproses dari {excelFile?.name}</p><p className="mt-1 text-slate-600 dark:text-slate-300">Mode: {replaceMode ? 'Ganti seluruh data' : 'Gabungkan dan perbarui'}. Data belum disimpan. Tekan tombol biru Proses Perhitungan pada panel Langkah Perhitungan SMART.</p></div>
+        <button type="button" disabled={isProcessing} onClick={() => setIsExcelModalOpen(true)} className="font-semibold text-blue-700 dark:text-blue-300 underline">Tinjau Data Excel</button>
+      </div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Steps, Formula & Weight Information */}
@@ -545,7 +554,7 @@ export const AdminPerhitunganSMART: React.FC = () => {
 
             <button
               onClick={handleRunCalculation}
-              disabled={isProcessing || isParsingExcel || isLoading || !selectedPeriode || !activeKriteria.length}
+              disabled={isProcessing || isParsingExcel || isLoading || !selectedPeriode || !activeKriteria.length || (!!excelParsedData && !excelReady)}
               className={`mt-5 w-full py-2.5 text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 ${
                 justCalculated
                   ? 'bg-emerald-600 text-white'
@@ -1219,8 +1228,8 @@ export const AdminPerhitunganSMART: React.FC = () => {
       </Modal>
 
       {/* MODAL: PREVIEW & OTOMASI PERHITUNGAN SMART DARI FILE EXCEL */}
-      <Modal isOpen={isExcelModalOpen && !!excelParsedData} onClose={() => { if (!isImportingExcel) setIsExcelModalOpen(false); }}
-        title="Pratinjau Excel ? Belum Diproses" maxWidth="4xl">
+      <Modal isOpen={isExcelModalOpen && !!excelParsedData} onClose={() => { if (!isProcessing) { setIsExcelModalOpen(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); } }}
+        title="Pratinjau Input Data Excel" maxWidth="4xl">
         {excelParsedData && <div className="space-y-5">
             {notification?.type === 'error' && <p role="alert" className="rounded-lg bg-red-50 text-red-800 p-3 text-xs">{notification.message}</p>}
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
@@ -1308,13 +1317,13 @@ export const AdminPerhitunganSMART: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-200 dark:border-slate-800">
               <p className="text-xs text-slate-500 flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Data belum disimpan dan hasil belum dihitung. Tekan Proses Perhitungan untuk menyimpan data Excel ke Supabase, lalu menampilkan langkah SMART dan peringkat.</span>
+                <span>Popup ini hanya untuk input data. Pilih Gunakan Data Excel untuk menyiapkan data, lalu mulai perhitungan melalui tombol biru Proses Perhitungan pada panel Langkah Perhitungan SMART.</span>
               </p>
 
               <div className="flex items-center gap-2.5 shrink-0 justify-end">
                 <button
                   type="button"
-                  onClick={() => { setIsExcelModalOpen(false); setExcelParsedData(null); setExcelFile(null); }}
+                  onClick={() => { setIsExcelModalOpen(false); setExcelReady(false); setExcelParsedData(null); setExcelFile(null); }}
                   disabled={isImportingExcel || !kriteriaList || !selectedPeriode}
                   className="px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
@@ -1322,19 +1331,19 @@ export const AdminPerhitunganSMART: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={handleRunCalculation}
+                  onClick={() => { setExcelReady(true); setCompleted(null); setIsExcelModalOpen(false); setActiveStep(1); }}
                   disabled={isImportingExcel || !kriteriaList || !selectedPeriode}
                   className="px-5 py-2.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
                 >
                   {isImportingExcel ? (
                     <>
                       <RotateCcw className="w-4 h-4 animate-spin" />
-                      <span>Memproses Otomasi SMART...</span>
+                      <span>Menyiapkan Data...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Proses Perhitungan</span>
+                      <span>Gunakan Data Excel</span>
                     </>
                   )}
                 </button>
