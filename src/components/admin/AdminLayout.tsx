@@ -19,7 +19,6 @@ export const AdminLayout: React.FC = () => {
     if (path.includes('/input-penilaian')) return ['Dashboard', 'Input Penilaian Matriks'];
     if (path.includes('/perhitungan-smart')) return ['Dashboard', 'Perhitungan SMART'];
     if (path.includes('/hasil-peringkat')) return ['Dashboard', 'Hasil & Peringkat'];
-    if (path.includes('/pengajuan')) return ['Dashboard', 'Laporan Penilaian & Pengajuan'];
     if (path.includes('/pengguna')) return ['Pengaturan', 'Manajemen Pengguna'];
     if (path.includes('/pengaturan')) return ['Pengaturan', 'Pengaturan Akun'];
     return ['Dashboard'];

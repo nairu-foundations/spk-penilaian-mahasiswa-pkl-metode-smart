@@ -18,7 +18,6 @@ import { AdminKriteria } from './pages/admin/AdminKriteria';
 import { AdminInputPenilaian } from './pages/admin/AdminInputPenilaian';
 import { AdminPerhitunganSMART } from './pages/admin/AdminPerhitunganSMART';
 import { AdminHasilPeringkat } from './pages/admin/AdminHasilPeringkat';
-import { AdminPengajuanPKL } from './pages/admin/AdminPengajuanPKL';
 import { AdminPengguna } from './pages/admin/AdminPengguna';
 import { AdminPengaturanAkun } from './pages/admin/AdminPengaturanAkun';
 import { AdminAuditLog } from './pages/admin/AdminAuditLog';
@@ -64,7 +63,7 @@ export default function App() {
             <Route path="input-penilaian" element={<AdminInputPenilaian />} />
             <Route path="perhitungan-smart" element={<AdminPerhitunganSMART />} />
             <Route path="hasil-peringkat" element={<AdminHasilPeringkat />} />
-            <Route path="pengajuan" element={<AdminPengajuanPKL />} />
+            <Route path="pengajuan" element={<Navigate to="/admin/hasil-peringkat" replace />} />
             <Route path="pengguna" element={<AdminPengguna />} />
             <Route path="cms" element={<Navigate to="/admin" replace />} />
             <Route path="pengaturan" element={<AdminPengaturanAkun />} />
